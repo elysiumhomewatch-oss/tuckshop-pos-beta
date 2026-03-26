@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tuckshop POS Free</title>
+    <title>Tuckshop POS Beta</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
     <style>
@@ -24,11 +24,12 @@
         .btn-save { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-gray { background: var(--gray); color: white; }
+        .btn-create { background: #10b981; color: white; }
         .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
         #search-results, #stock-search-results { 
             position: absolute; background: white; width: 100%; border: 1px solid #e2e8f0; 
-            border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 15; 
-            display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 15; display: none; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
         }
         .search-row { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
         .search-row:hover { background: #f8fafc; }
@@ -37,37 +38,35 @@
         .status { color: var(--gray); font-size: 14px; margin-top: 8px; }
         .markup-group { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .markup-group label { flex: 0 0 100px; font-weight: 500; }
-
-        /* Collapsible Instructions */
-        .accordion {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            margin: 16px 0;
-            overflow: hidden;
-        }
-        .accordion-header {
-            padding: 14px;
-            background: #f1f5f9;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .accordion-content {
-            padding: 14px;
-            display: none;
-            line-height: 1.5;
-        }
+        .accordion { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 16px 0; overflow: hidden; }
+        .accordion-header { padding: 14px; background: #f1f5f9; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .accordion-content { padding: 14px; display: none; line-height: 1.5; }
         .accordion-content.show { display: block; }
+        .price-preview { 
+            background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 8px 0; 
+            font-size: 15px; color: #166534; border: 1px solid #86efac; 
+        }
+        .beta-banner {
+            background: #fef3c7; color: #854d0e; padding: 10px; border-radius: 8px; 
+            text-align: center; font-weight: 600; margin-bottom: 16px;
+        }
+        .daily-summary {
+            background: #ecfdf5; padding: 12px; border-radius: 8px; margin: 12px 0;
+            font-size: 15px; color: #0f766e;
+        }
+        .transaction-log {
+            max-height: 180px; overflow-y: auto; background: #f8fafc; 
+            padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Free</h2>
-    <div class="watermark">Free Level 0 – Simple & Reliable for Spaza Shops</div>
+    <div class="beta-banner">🔬 BETA TESTING VERSION - Please report any issues you find</div>
+    
+    <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
+    <div class="watermark">Free testing version for spaza shops • Version 0.5</div>
 
     <nav>
         <button id="nav-sale" class="active" onclick="showTab('sale')">Sale</button>
@@ -94,8 +93,16 @@
             <button class="btn btn-gray" onclick="clearCart()">Clear Cart</button>
         </div>
         <div id="sale-status" class="status"></div>
-        <div class="upgrade-msg" id="limit-msg" style="display:none;">
-            Daily free limit reached (100 items). Upgrade to continue!
+        
+        <div class="daily-summary">
+            <strong>Today's Sales:</strong> <span id="daily-total">R0.00</span> 
+            (<span id="daily-items">0</span> items)
+            <button onclick="resetDailySales()" style="margin-left:12px; padding:4px 8px; font-size:12px;">Reset</button>
+        </div>
+
+        <div class="transaction-log">
+            <strong>Last 5 Sales:</strong>
+            <div id="transaction-log"></div>
         </div>
     </div>
 
@@ -110,12 +117,17 @@
         </div>
         
         <input type="text" id="stock-name" placeholder="Item Name">
-        <input type="number" step="0.01" id="stock-cost" placeholder="Cost Price (R)">
-        <select id="stock-cat">
+        <input type="number" step="0.01" id="stock-cost" placeholder="Cost Price (R)" oninput="updatePricePreview()">
+        <select id="stock-cat" onchange="updatePricePreview()">
             <option value="Snacks">Snacks</option>
             <option value="Drinks">Drinks</option>
             <option value="Other">Other</option>
         </select>
+
+        <div id="price-preview" class="price-preview" style="display:none;">
+            Selling Price: <strong>R0.00</strong> (Markup: <span id="preview-markup">20</span>%)
+        </div>
+
         <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
         <div id="stock-status" class="status"></div>
     </div>
@@ -124,6 +136,11 @@
     <div id="sets-tab" class="tab-content">
         <h2>Settings</h2>
         
+        <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet for Me</button>
+        <p style="text-align:center; font-size:14px; color:#64748b; margin:8px 0 20px 0;">
+            One-tap setup: Creates a new Google Sheet in your Drive
+        </p>
+
         <label>Your Google Sheet URL:</label>
         <input type="text" id="user-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." style="margin-bottom:12px;">
         
@@ -146,46 +163,35 @@
         </div>
         <button class="btn" style="background:#334155; color:white;" onclick="saveMarkups()">Save Markups</button>
 
-        <!-- Collapsible Usage Instructions -->
         <div class="accordion" style="margin-top:24px;">
             <div class="accordion-header" onclick="toggleAccordion(this)">
-                📖 How to Use Tuckshop POS Free
-                <span>▼</span>
+                📖 How to Use Tuckshop POS Beta <span>▼</span>
             </div>
             <div class="accordion-content">
-                <strong>Welcome!</strong><br><br>
-                1. <strong>Settings Tab</strong> → Paste your Google Sheet URL and tap "Save My Sheet & Sync"<br>
-                2. Tap <strong>"Refresh Inventory from My Sheet"</strong> to load your products<br>
-                3. <strong>Sale Tab</strong>: Scan barcodes or search → items go into cart<br>
-                4. When ready, tap <strong>"Complete Sale"</strong> → enter cash received → see change to give back<br>
-                5. <strong>Stock Tab</strong>: Scan or type barcode → fill name & cost → Save<br>
-                6. Change markups anytime in Settings<br><br>
-                <em>Everything saves automatically on your phone. No internet needed after initial setup.</em>
+                1. Tap "Create New Shared Sheet" (recommended for new users)<br>
+                2. Paste the copied URL and tap "Save My Sheet & Sync"<br>
+                3. Tap "Refresh Inventory from My Sheet" to load your products<br>
+                4. Go to Sale tab: Scan items or search → add to cart<br>
+                5. Tap "Complete Sale" → enter cash received → see exact change<br>
+                6. Use Stock tab to add or edit items<br>
+                7. Change markups anytime in Settings<br><br>
+                <em>This is a Beta version. Please report any issues you find.</em>
             </div>
         </div>
 
-        <!-- Paid Upgrades Section -->
         <div class="upgrade-msg" style="margin-top:16px;">
-            <strong>Want More?</strong><br><br>
-            Upgrade to unlock:<br>
-            • Unlimited daily sales (no 100-item limit)<br>
-            • Recipe system (Kota, drinks, takeaways – auto deduct ingredients)<br>
-            • Employee clock-in / payroll<br>
-            • Stock-take & reports<br>
-            • Float management & card payments<br>
-            • Multiple users & advanced analytics<br><br>
-            Contact the developer for upgrade options.
+            <strong>Want More Features?</strong><br><br>
+            Upgrade for unlimited sales, recipes, employees, reports & more.
         </div>
     </div>
 </div>
 
 <script>
-    // ==================== HARDCODED APPS SCRIPT URL ====================
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9AKjnz2PLNSUh-wNe_1uuPIipUPrScWcpCriiuOwxbeZf3LmYcTW4h0GTTuLXHkVi/exec"; 
-    // ←←← CHANGE THIS TO YOUR ACTUAL DEPLOYED APPS SCRIPT URL
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
 
     let inventory = [];
     let cart = [];
+    let transactions = [];           // Last 5 sales
     let isScannerRunning = false;
     let currentScanMode = null;
     let lastDetectionTime = 0;
@@ -193,7 +199,9 @@
     const DETECTION_COOLDOWN_MS = 1800;
     const DAILY_LIMIT = 100;
     let dailyCount = 0;
+    let dailyTotal = 0;
     let todayKey = 'tuckshop_free_today_' + new Date().toDateString();
+    let dailyTotalKey = 'tuckshop_daily_total_' + new Date().toDateString();
 
     const elements = {
         manualSearch: document.getElementById('manual-search'),
@@ -201,14 +209,20 @@
         cartList: document.getElementById('cart-items-list'),
         grandTotal: document.getElementById('grand-total'),
         saleStatus: document.getElementById('sale-status'),
-        limitMsg: document.getElementById('limit-msg')
+        limitMsg: document.getElementById('limit-msg'),
+        dailyTotalEl: document.getElementById('daily-total'),
+        dailyItemsEl: document.getElementById('daily-items'),
+        transactionLog: document.getElementById('transaction-log')
     };
 
     window.onload = () => {
         loadSettings();
         loadMarkups();
         loadInventoryFromLocal();
+        loadDailySales();
+        loadTransactions();
         renderCart();
+        renderTransactionLog();
         dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
         checkDailyLimit();
     };
@@ -231,6 +245,33 @@
         checkDailyLimit();
     }
 
+    function loadDailySales() {
+        dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
+        updateDailyDisplay();
+    }
+
+    function updateDailyDisplay() {
+        elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
+        elements.dailyItemsEl.textContent = dailyCount;
+    }
+
+    function resetDailySales() {
+        if (confirm("Reset today's sales counter and total?")) {
+            dailyCount = 0;
+            dailyTotal = 0;
+            localStorage.setItem(todayKey, '0');
+            localStorage.setItem(dailyTotalKey, '0');
+            updateDailyDisplay();
+            alert("Daily sales have been reset.");
+        }
+    }
+
+    function addToDailyTotal(amount) {
+        dailyTotal += amount;
+        localStorage.setItem(dailyTotalKey, dailyTotal);
+        updateDailyDisplay();
+    }
+
     function showTab(tab) {
         if (isScannerRunning) stopScanner();
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -241,6 +282,17 @@
 
     function normalizeBarcode(barcode) {
         return String(barcode || "").trim().replace(/^0+/, '');
+    }
+
+    function createNewSheet() {
+        if (!confirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share (top right)\n2. Set to 'Anyone with the link'\n3. Set permission to 'Editor'\n4. Copy the URL and paste it below.\n\nContinue?")) return;
+
+        const statusEl = document.getElementById('sale-status');
+        statusEl.textContent = "Opening new Google Sheet...";
+
+        window.open("https://docs.google.com/spreadsheets/create", "_blank");
+
+        statusEl.textContent = "✅ New sheet opened. Set sharing to 'Anyone with the link → Editor', then paste the URL below.";
     }
 
     function saveUserSheetURL() {
@@ -270,14 +322,31 @@
         localStorage.setItem('markup-Other', document.getElementById('markup-Other').value);
         alert("Markups saved! Prices updated.");
         renderCart();
+        updatePricePreview();
     }
 
-    // Collapsible Instructions
     function toggleAccordion(header) {
         const content = header.nextElementSibling;
         content.classList.toggle('show');
         const arrow = header.querySelector('span');
         arrow.textContent = content.classList.contains('show') ? '▲' : '▼';
+    }
+
+    function updatePricePreview() {
+        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
+        const category = document.getElementById('stock-cat').value;
+        const previewDiv = document.getElementById('price-preview');
+
+        if (cost <= 0) {
+            previewDiv.style.display = 'none';
+            return;
+        }
+
+        const markup = parseFloat(localStorage.getItem('markup-' + category)) || 20;
+        const selling = (cost * (1 + markup / 100)).toFixed(2);
+
+        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}%)`;
+        previewDiv.style.display = 'block';
     }
 
     function autoFillFromBarcode(inputValue) {
@@ -289,11 +358,13 @@
             document.getElementById('stock-cost').value = item.cost || "";
             document.getElementById('stock-cat').value = item.category || "Other";
             document.getElementById('stock-status').textContent = "✅ Item found - fields populated";
+            updatePricePreview();
         } else {
             document.getElementById('stock-name').value = "";
             document.getElementById('stock-cost').value = "";
             document.getElementById('stock-cat').value = "Other";
             document.getElementById('stock-status').textContent = "New item - please fill details";
+            updatePricePreview();
         }
     }
 
@@ -303,8 +374,10 @@
             resultsDiv.style.display = 'none';
             return;
         }
+
         const lower = val.toLowerCase();
         const normalized = normalizeBarcode(val);
+
         const filtered = inventory.filter(i => 
             (i.name || '').toLowerCase().includes(lower) || 
             normalizeBarcode(i.barcode) === normalized
@@ -315,6 +388,7 @@
                 ${i.name} (${i.barcode})
             </div>`
         ).join('');
+
         resultsDiv.style.display = filtered.length ? 'block' : 'none';
     }
 
@@ -328,6 +402,7 @@
             document.getElementById('stock-cat').value = item.category || "Other";
             document.getElementById('stock-search-results').style.display = 'none';
             document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+            updatePricePreview();
         }
     }
 
@@ -354,23 +429,44 @@
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                video: { 
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
             });
 
             currentMediaStream = stream;
+
             document.getElementById('interactive').style.display = 'block';
             document.getElementById('stop-scan-btn').style.display = 'block';
             isScannerRunning = true;
 
             Quagga.init({
-                inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('interactive'), constraints: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.getElementById('interactive'),
+                    constraints: {
+                        facingMode: { ideal: "environment" },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                },
                 locator: { patchSize: "medium", halfSample: true },
                 numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
                 frequency: 15,
-                decoder: { readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"], multiple: false },
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
+                    multiple: false
+                },
                 locate: true
             }, (err) => {
-                if (err) { alert("Scanner failed to start: " + err); stopScanner(); return; }
+                if (err) {
+                    alert("Scanner failed to start: " + err);
+                    stopScanner();
+                    return;
+                }
                 Quagga.start();
             });
 
@@ -393,6 +489,7 @@
                     stopScanner();
                 }
             });
+
         } catch (e) {
             alert(`Camera error: ${e.name}\nTry restarting your phone.`);
             stopScanner();
@@ -401,7 +498,10 @@
 
     function stopScanner() {
         if (Quagga && isScannerRunning) Quagga.stop();
-        if (currentMediaStream) currentMediaStream.getTracks().forEach(track => track.stop());
+        if (currentMediaStream) {
+            currentMediaStream.getTracks().forEach(track => track.stop());
+            currentMediaStream = null;
+        }
         document.getElementById('interactive').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'none';
         isScannerRunning = false;
@@ -423,7 +523,10 @@
 
     async function fetchInventoryFromSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return alert("Please enter your Google Sheet URL first.");
+        if (!sheetUrl) {
+            alert("Please enter your Google Sheet URL first.");
+            return;
+        }
 
         elements.saleStatus.textContent = "Loading from your Google Sheet...";
 
@@ -434,7 +537,10 @@
                 body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
             const rawData = await res.json();
+
             inventory = rawData.map(row => ({
                 barcode: normalizeBarcode(row.Barcode || row.barcode || ""),
                 name: String(row.Name || row.name || ""),
@@ -445,6 +551,7 @@
             saveInventoryToLocal();
             elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from your sheet`;
         } catch (e) {
+            console.error("Fetch error:", e);
             elements.saleStatus.textContent = "❌ Failed to load from sheet";
         }
     }
@@ -452,7 +559,11 @@
     async function importMasterProducts() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return alert("Please enter your Google Sheet URL first!");
+
         if (!confirm("Import products from Master Database?\n\nWarning: Prices are NOT included.")) return;
+
+        const statusEl = document.getElementById('sale-status');
+        statusEl.textContent = "Importing Master Products...";
 
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
@@ -461,7 +572,14 @@
                 body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
             });
 
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
             const masterItems = await res.json();
+
+            if (!Array.isArray(masterItems) || masterItems.length === 0) {
+                return alert("Master database returned no items.");
+            }
+
             let importedCount = 0;
             const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
 
@@ -469,7 +587,13 @@
                 const normalizedBarcode = normalizeBarcode(item.barcode);
                 if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
 
-                const newItem = { barcode: normalizedBarcode, name: String(item.name || ""), cost: 0, category: String(item.category || "Other") };
+                const newItem = {
+                    barcode: normalizedBarcode,
+                    name: String(item.name || ""),
+                    cost: 0,
+                    category: String(item.category || "Other")
+                };
+
                 await saveSingleItemToSheet(newItem);
                 inventory.push(newItem);
                 existingBarcodes.add(normalizedBarcode);
@@ -478,8 +602,10 @@
 
             saveInventoryToLocal();
             elements.saleStatus.textContent = `✅ Imported ${importedCount} new products`;
-            alert(`✅ Imported ${importedCount} products!\n\nSet cost prices in Stock tab.`);
+            alert(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in Stock tab.`);
+
         } catch (e) {
+            console.error(e);
             alert("Import failed: " + e.message);
         }
     }
@@ -493,7 +619,9 @@
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
             });
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error("Failed to save item:", e);
+        }
     }
 
     async function saveStockToCloud() {
@@ -510,6 +638,12 @@
 
         if (!data.name || !data.barcode) return alert("Barcode and Item Name are required!");
 
+        const saveBtn = document.getElementById('save-stock-btn');
+        const statusEl = document.getElementById('stock-status');
+
+        saveBtn.disabled = true;
+        statusEl.textContent = "Saving / Updating...";
+
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
@@ -518,17 +652,24 @@
             });
 
             const result = await res.json();
+
             if (result.success) {
                 alert("✅ Item saved / updated successfully!");
                 const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
-                if (index !== -1) inventory[index] = { ...inventory[index], ...data };
-                else inventory.push(data);
+                if (index !== -1) {
+                    inventory[index] = { ...inventory[index], ...data };
+                } else {
+                    inventory.push(data);
+                }
                 saveInventoryToLocal();
             } else {
-                alert("Save failed.");
+                alert("Save failed: " + (result.error || "Unknown error"));
             }
         } catch (e) {
             alert("Connection error: " + e.message);
+        } finally {
+            saveBtn.disabled = false;
+            statusEl.textContent = "";
         }
     }
 
@@ -598,9 +739,136 @@
         }
 
         const change = cash - total;
-        alert(`✅ Sale Complete!\n\nTotal:          R${total.toFixed(2)}\nCash Received:  R${cash.toFixed(2)}\nChange:         R${change.toFixed(2)}\n\nThank you! Come again!`);
+
+        // Log transaction
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        transactions.unshift({
+            time: timeStr,
+            total: total.toFixed(2),
+            items: cart.length,
+            change: change.toFixed(2)
+        });
+        if (transactions.length > 5) transactions.pop();
+        localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
+        renderTransactionLog();
+
+        addToDailyTotal(total);
+
+        alert(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`);
 
         clearCart();
+    }
+
+    function loadTransactions() {
+        const saved = localStorage.getItem('tuckshop_transactions');
+        if (saved) transactions = JSON.parse(saved);
+    }
+
+    function renderTransactionLog() {
+        const logDiv = elements.transactionLog;
+        if (transactions.length === 0) {
+            logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
+            return;
+        }
+        logDiv.innerHTML = transactions.map(t => `
+            <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
+        `).join('');
+    }
+
+    // ==================== SCANNER ====================
+    async function startScanner(mode) {
+        if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
+            return alert("Daily free limit reached. Upgrade for unlimited sales!");
+
+        if (typeof Quagga === 'undefined') return alert("Scanner library not loaded.");
+
+        if (currentMediaStream) {
+            currentMediaStream.getTracks().forEach(track => track.stop());
+            currentMediaStream = null;
+        }
+
+        currentScanMode = mode;
+        lastDetectionTime = 0;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+
+            currentMediaStream = stream;
+
+            document.getElementById('interactive').style.display = 'block';
+            document.getElementById('stop-scan-btn').style.display = 'block';
+            isScannerRunning = true;
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.getElementById('interactive'),
+                    constraints: {
+                        facingMode: { ideal: "environment" },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                },
+                locator: { patchSize: "medium", halfSample: true },
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                frequency: 15,
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
+                    multiple: false
+                },
+                locate: true
+            }, (err) => {
+                if (err) {
+                    alert("Scanner failed to start: " + err);
+                    stopScanner();
+                    return;
+                }
+                Quagga.start();
+            });
+
+            Quagga.onDetected((data) => {
+                const now = Date.now();
+                if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
+                lastDetectionTime = now;
+
+                const code = data.codeResult.code;
+                if (navigator.vibrate) navigator.vibrate(80);
+
+                if (currentScanMode === 'sale') {
+                    addToCart(code);
+                    elements.saleStatus.textContent = `Added: ${code}`;
+                    setTimeout(stopScanner, 400);
+                    incrementDailyCount();
+                } else {
+                    document.getElementById('stock-barcode').value = code;
+                    autoFillFromBarcode(code);
+                    stopScanner();
+                }
+            });
+
+        } catch (e) {
+            alert(`Camera error: ${e.name}\nTry restarting your phone.`);
+            stopScanner();
+        }
+    }
+
+    function stopScanner() {
+        if (Quagga && isScannerRunning) Quagga.stop();
+        if (currentMediaStream) {
+            currentMediaStream.getTracks().forEach(track => track.stop());
+            currentMediaStream = null;
+        }
+        document.getElementById('interactive').style.display = 'none';
+        document.getElementById('stop-scan-btn').style.display = 'none';
+        isScannerRunning = false;
     }
 </script>
 </body>
