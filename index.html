@@ -51,17 +51,13 @@
             background: #fef3c7; color: #854d0e; padding: 10px; border-radius: 8px; 
             text-align: center; font-weight: 600; margin-bottom: 16px;
         }
-        .daily-summary {
-            background: #ecfdf5; padding: 12px; border-radius: 8px; margin: 12px 0;
-            font-size: 15px; color: #0f766e;
+        .daily-summary, .cashup-summary {
+            background: #ecfdf5; padding: 14px; border-radius: 10px; margin: 12px 0;
+            font-size: 15px; color: #0f766e; border: 1px solid #67e8f9;
         }
         .transaction-log {
             max-height: 180px; overflow-y: auto; background: #f8fafc; 
             padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
-        }
-        .cashup-summary {
-            background: #f3e8ff; padding: 16px; border-radius: 10px; margin: 12px 0;
-            border: 2px solid #c4b5fd;
         }
     </style>
 </head>
@@ -178,7 +174,7 @@
                 2. Paste the URL and tap "Save My Sheet & Sync"<br>
                 3. Refresh Inventory<br>
                 4. Scan & sell in Sale tab<br>
-                5. At end of day, tap "Cash Up / Float Check"<br><br>
+                5. At end of shift, tap "Cash Up / Float Check"<br><br>
                 <em>This is a Beta version. Please report any issues.</em>
             </div>
         </div>
@@ -204,8 +200,10 @@
     const DAILY_LIMIT = 100;
     let dailyCount = 0;
     let dailyTotal = 0;
+    let startingFloat = 0;
     let todayKey = 'tuckshop_free_today_' + new Date().toDateString();
     let dailyTotalKey = 'tuckshop_daily_total_' + new Date().toDateString();
+    let floatKey = 'tuckshop_starting_float_' + new Date().toDateString();
 
     const elements = {
         manualSearch: document.getElementById('manual-search'),
@@ -224,6 +222,7 @@
         loadMarkups();
         loadInventoryFromLocal();
         loadDailySales();
+        loadStartingFloat();
         loadTransactions();
         renderCart();
         renderTransactionLog();
@@ -254,19 +253,25 @@
         updateDailyDisplay();
     }
 
+    function loadStartingFloat() {
+        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
+    }
+
     function updateDailyDisplay() {
         elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
         elements.dailyItemsEl.textContent = dailyCount;
     }
 
     function resetDailySales() {
-        if (confirm("Reset today's sales counter and total?")) {
+        if (confirm("Reset today's sales and float?")) {
             dailyCount = 0;
             dailyTotal = 0;
+            startingFloat = 0;
             localStorage.setItem(todayKey, '0');
             localStorage.setItem(dailyTotalKey, '0');
+            localStorage.setItem(floatKey, '0');
             updateDailyDisplay();
-            alert("Daily sales have been reset.");
+            alert("Daily sales and float have been reset.");
         }
     }
 
@@ -780,48 +785,50 @@
         `).join('');
     }
 
-    // ==================== CASH UP / FLOAT MANAGEMENT ====================
+    // ==================== FLOAT & CASH UP ====================
     function showCashUp() {
-        const expected = dailyTotal;
-        const cashInDrawer = prompt(`Cash Up\n\nExpected from sales: R${expected.toFixed(2)}\n\nEnter actual cash in drawer:`, expected.toFixed(2));
-        if (cashInDrawer === null) return;
+        const expectedSales = dailyTotal;
+        const expectedCash = startingFloat + expectedSales;
 
-        const cash = parseFloat(cashInDrawer);
-        if (isNaN(cash)) {
-            alert("Please enter a valid amount.");
-            return;
-        }
+        let cashCounted = prompt(`CASH UP\n\nExpected cash (Float + Sales): R${expectedCash.toFixed(2)}\n\nEnter actual cash counted in drawer:`, expectedCash.toFixed(2));
+        if (cashCounted === null) return;
+        cashCounted = parseFloat(cashCounted);
 
-        const cardSlips = parseFloat(prompt("Enter total from card slips / card payments:", "0") || "0");
+        let cardTotal = parseFloat(prompt("Enter total from card slips / card payments:", "0") || "0");
 
-        const actualTotal = cash + cardSlips;
-        const difference = actualTotal - expected;
+        const actualTotal = cashCounted + cardTotal;
+        const variance = actualTotal - expectedCash;
 
         let message = `CASH UP SUMMARY\n\n`;
-        message += `Expected from sales: R${expected.toFixed(2)}\n`;
-        message += `Cash in drawer:     R${cash.toFixed(2)}\n`;
-        message += `Card slips:         R${cardSlips.toFixed(2)}\n`;
+        message += `Starting Float:     R${startingFloat.toFixed(2)}\n`;
+        message += `Today's Sales:      R${expectedSales.toFixed(2)}\n`;
         message += `────────────────────\n`;
-        message += `Actual total:       R${actualTotal.toFixed(2)}\n`;
-        message += `Difference:         R${difference.toFixed(2)}\n\n`;
+        message += `Expected Cash:      R${expectedCash.toFixed(2)}\n`;
+        message += `Cash Counted:       R${cashCounted.toFixed(2)}\n`;
+        message += `Card Payments:      R${cardTotal.toFixed(2)}\n`;
+        message += `Actual Total:       R${actualTotal.toFixed(2)}\n`;
+        message += `Variance:           R${variance.toFixed(2)}\n\n`;
 
-        if (difference > 0) {
-            message += `✅ You are OVER by R${difference.toFixed(2)}`;
-        } else if (difference < 0) {
-            message += `⚠️ You are SHORT by R${Math.abs(difference).toFixed(2)}`;
-        } else {
-            message += `✅ Perfect match!`;
-        }
+        if (variance > 0) message += `✅ You are OVER by R${variance.toFixed(2)}`;
+        else if (variance < 0) message += `⚠️ You are SHORT by R${Math.abs(variance).toFixed(2)}`;
+        else message += `✅ Perfect match! No variance.`;
 
         alert(message);
 
-        // Optional: Reset daily after cash up
-        if (confirm("Reset daily sales counter for tomorrow?")) {
-            resetDailySales();
+        // Ask to set new float for next shift
+        if (confirm("Would you like to set the starting float for tomorrow's shift?")) {
+            let newFloat = prompt("Enter starting float for next shift:", cashCounted.toFixed(2));
+            if (newFloat !== null) {
+                startingFloat = parseFloat(newFloat) || 0;
+                localStorage.setItem(floatKey, startingFloat);
+                alert(`Starting float for tomorrow set to R${startingFloat.toFixed(2)}`);
+            }
         }
     }
 
-    // ==================== SCANNER ====================
+    // Rest of your scanner and other functions remain the same as previous version
+    // (startScanner, stopScanner, fetchInventoryFromSheet, etc.)
+
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
             return alert("Daily free limit reached. Upgrade for unlimited sales!");
