@@ -7,57 +7,164 @@
     <link rel="icon" href="data:,">
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
     <style>
-        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
+        :root { 
+            --primary: #2563eb; 
+            --success: #16a34a; 
+            --danger: #dc2626; 
+            --bg: #f8fafc; 
+            --text: #1e293b; 
+            --gray: #64748b; 
+        }
         * { box-sizing: border-box; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; min-height: 100vh; }
-        .container { max-width: 520px; margin: auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        body { 
+            font-family: system-ui, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 12px; 
+            min-height: 100vh; 
+        }
+        .container { 
+            max-width: 520px; 
+            margin: auto; 
+            background: white; 
+            padding: 16px; 
+            border-radius: 16px; 
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08); 
+        }
         nav { display: flex; gap: 8px; margin-bottom: 16px; }
         nav button { flex: 1; padding: 12px; border: none; background: #e2e8f0; border-radius: 10px; font-weight: 600; cursor: pointer; }
         nav button.active { background: var(--primary); color: white; }
+
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        #interactive.viewport { width: 100%; height: 260px; background: #000; border-radius: 12px; margin: 12px 0; display: none; overflow: hidden; }
-        #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
-        input, select { width: 100%; padding: 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 12px; }
+
+        #interactive.viewport { 
+            width: 100%; height: 260px; background: #000; border-radius: 12px; 
+            margin: 12px 0; display: none; overflow: hidden; 
+        }
+        #interactive.viewport video, #interactive.viewport canvas { 
+            width: 100%; height: 100%; object-fit: cover; 
+        }
+
+        input, select { 
+            width: 100%; padding: 14px; border: 1px solid #cbd5e1; 
+            border-radius: 10px; font-size: 16px; margin-bottom: 12px; 
+        }
+
+        .btn { 
+            width: 100%; padding: 14px; border: none; border-radius: 10px; 
+            font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 12px; 
+        }
         .btn-scan { background: var(--primary); color: white; }
         .btn-save { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-gray { background: var(--gray); color: white; }
         .btn-create { background: #10b981; color: white; }
         .btn-cashup { background: #7c3aed; color: white; }
-        .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+
+        .cart-item { 
+            display: flex; justify-content: space-between; 
+            padding: 12px 0; border-bottom: 1px solid #f1f5f9; 
+        }
+
         #search-results, #stock-search-results { 
             position: absolute; background: white; width: 100%; border: 1px solid #e2e8f0; 
-            border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 15; display: none; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 15; 
+            display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
         }
         .search-row { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
         .search-row:hover { background: #f8fafc; }
+
         .watermark { color: #94a3b8; font-size: 13px; text-align: center; margin: 16px 0; }
         .upgrade-msg { background: #fef3c7; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 15px; }
         .status { color: var(--gray); font-size: 14px; margin-top: 8px; }
+
         .markup-group { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .markup-group label { flex: 0 0 100px; font-weight: 500; }
+
         .accordion { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 16px 0; overflow: hidden; }
         .accordion-header { padding: 14px; background: #f1f5f9; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .accordion-content { padding: 14px; display: none; line-height: 1.5; }
         .accordion-content.show { display: block; }
+
         .price-preview { 
             background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 8px 0; 
             font-size: 15px; color: #166534; border: 1px solid #86efac; 
         }
+
         .beta-banner {
             background: #fef3c7; color: #854d0e; padding: 10px; border-radius: 8px; 
             text-align: center; font-weight: 600; margin-bottom: 16px;
         }
-        .daily-summary, .cashup-summary {
+
+        .daily-summary {
             background: #ecfdf5; padding: 14px; border-radius: 10px; margin: 12px 0;
-            font-size: 15px; color: #0f766e; border: 1px solid #67e8f9;
+            font-size: 15px; color: #0f766e;
         }
+
         .transaction-log {
             max-height: 180px; overflow-y: auto; background: #f8fafc; 
             padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
+        }
+
+        /* Custom Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 420px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+        .modal-body {
+            margin-bottom: 24px;
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        .modal-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .modal-buttons .btn-cancel {
+            background: #e2e8f0;
+            color: #334155;
+        }
+        .modal-buttons .btn-confirm {
+            background: var(--primary);
+            color: white;
         }
     </style>
 </head>
@@ -186,6 +293,18 @@
     </div>
 </div>
 
+<!-- Custom Modal -->
+<div id="custom-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-body" id="modal-body"></div>
+        <div class="modal-buttons">
+            <button class="btn btn-gray" id="modal-cancel">Cancel</button>
+            <button class="btn btn-save" id="modal-confirm">OK</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
 
@@ -211,11 +330,62 @@
         cartList: document.getElementById('cart-items-list'),
         grandTotal: document.getElementById('grand-total'),
         saleStatus: document.getElementById('sale-status'),
-        limitMsg: document.getElementById('limit-msg'),
         dailyTotalEl: document.getElementById('daily-total'),
         dailyItemsEl: document.getElementById('daily-items'),
         transactionLog: document.getElementById('transaction-log')
     };
+
+    // Modal helpers
+    function showMessage(message, callback = null) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Message";
+        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+        document.getElementById('modal-cancel').style.display = 'none';
+        document.getElementById('modal-confirm').textContent = "OK";
+        modal.style.display = 'flex';
+
+        document.getElementById('modal-confirm').onclick = () => {
+            modal.style.display = 'none';
+            if (callback) callback();
+        };
+    }
+
+    function showConfirm(message, onConfirm) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Confirm";
+        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+        document.getElementById('modal-cancel').style.display = 'block';
+        document.getElementById('modal-confirm').textContent = "Yes";
+        modal.style.display = 'flex';
+
+        document.getElementById('modal-confirm').onclick = () => {
+            modal.style.display = 'none';
+            onConfirm();
+        };
+        document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
+    }
+
+    function showPrompt(message, defaultValue, onSubmit) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Input Required";
+        document.getElementById('modal-body').innerHTML = `
+            <p>${message}</p>
+            <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}" placeholder="Enter amount">
+        `;
+        document.getElementById('modal-cancel').style.display = 'block';
+        document.getElementById('modal-confirm').textContent = "OK";
+        modal.style.display = 'flex';
+
+        const input = document.getElementById('modal-input');
+        input.focus();
+
+        document.getElementById('modal-confirm').onclick = () => {
+            const value = parseFloat(input.value) || 0;
+            modal.style.display = 'none';
+            onSubmit(value);
+        };
+        document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
+    }
 
     window.onload = () => {
         loadSettings();
@@ -232,11 +402,9 @@
 
     function checkDailyLimit() {
         if (dailyCount >= DAILY_LIMIT) {
-            elements.limitMsg.style.display = 'block';
             document.getElementById('scan-btn').disabled = true;
             elements.manualSearch.disabled = true;
         } else {
-            elements.limitMsg.style.display = 'none';
             document.getElementById('scan-btn').disabled = false;
             elements.manualSearch.disabled = false;
         }
@@ -253,17 +421,17 @@
         updateDailyDisplay();
     }
 
-    function loadStartingFloat() {
-        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
-    }
-
     function updateDailyDisplay() {
         elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
         elements.dailyItemsEl.textContent = dailyCount;
     }
 
+    function loadStartingFloat() {
+        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
+    }
+
     function resetDailySales() {
-        if (confirm("Reset today's sales and float?")) {
+        showConfirm("Reset today's sales and float for a new day?", () => {
             dailyCount = 0;
             dailyTotal = 0;
             startingFloat = 0;
@@ -271,8 +439,8 @@
             localStorage.setItem(dailyTotalKey, '0');
             localStorage.setItem(floatKey, '0');
             updateDailyDisplay();
-            alert("Daily sales and float have been reset.");
-        }
+            showMessage("Daily sales and float have been reset.");
+        });
     }
 
     function addToDailyTotal(amount) {
@@ -294,24 +462,20 @@
     }
 
     function createNewSheet() {
-        if (!confirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the URL and paste it below.\n\nContinue?")) return;
-
-        const statusEl = document.getElementById('sale-status');
-        statusEl.textContent = "Opening new Google Sheet...";
-
-        window.open("https://docs.google.com/spreadsheets/create", "_blank");
-
-        statusEl.textContent = "✅ New sheet opened. Set sharing and paste URL below.";
+        showConfirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the full URL and paste it in Settings.\n\nContinue?", () => {
+            document.getElementById('sale-status').textContent = "Opening new Google Sheet...";
+            window.open("https://docs.google.com/spreadsheets/create", "_blank");
+            document.getElementById('sale-status').textContent = "✅ New sheet opened. Set sharing and paste URL in Settings.";
+        });
     }
 
     function saveUserSheetURL() {
         const url = document.getElementById('user-sheet-url').value.trim();
         if (url) {
             localStorage.setItem('user-sheet-url', url);
-            alert("✅ Your Google Sheet URL has been saved!");
-            fetchInventoryFromSheet();
+            showMessage("✅ Your Google Sheet URL has been saved!", () => fetchInventoryFromSheet());
         } else {
-            alert("Please enter your Google Sheet URL.");
+            showMessage("Please enter your Google Sheet URL.");
         }
     }
 
@@ -329,7 +493,7 @@
         localStorage.setItem('markup-Snacks', document.getElementById('markup-Snacks').value);
         localStorage.setItem('markup-Drinks', document.getElementById('markup-Drinks').value);
         localStorage.setItem('markup-Other', document.getElementById('markup-Other').value);
-        alert("Markups saved! Prices updated.");
+        showMessage("Markups saved! Prices updated.");
         renderCart();
         updatePricePreview();
     }
@@ -424,9 +588,9 @@
 
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
-            return alert("Daily free limit reached. Upgrade for unlimited sales!");
+            return showMessage("Daily free limit reached. Upgrade for unlimited sales!");
 
-        if (typeof Quagga === 'undefined') return alert("Scanner library not loaded.");
+        if (typeof Quagga === 'undefined') return showMessage("Scanner library not loaded.");
 
         if (currentMediaStream) {
             currentMediaStream.getTracks().forEach(track => track.stop());
@@ -472,7 +636,7 @@
                 locate: true
             }, (err) => {
                 if (err) {
-                    alert("Scanner failed to start: " + err);
+                    showMessage("Scanner failed to start: " + err);
                     stopScanner();
                     return;
                 }
@@ -500,7 +664,7 @@
             });
 
         } catch (e) {
-            alert(`Camera error: ${e.name}\nTry restarting your phone.`);
+            showMessage(`Camera error: ${e.name}\nMake sure no other app is using the camera and try again.`);
             stopScanner();
         }
     }
@@ -532,10 +696,7 @@
 
     async function fetchInventoryFromSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) {
-            alert("Please enter your Google Sheet URL first.");
-            return;
-        }
+        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first.");
 
         elements.saleStatus.textContent = "Loading from your Google Sheet...";
 
@@ -567,56 +728,53 @@
 
     async function importMasterProducts() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return alert("Please enter your Google Sheet URL first!");
+        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first!");
 
-        if (!confirm("Import products from Master Database?\n\nWarning: Prices are NOT included.")) return;
+        showConfirm("Import products from Master Database?\n\nWarning: Cost prices will be 0.", async () => {
+            const statusEl = document.getElementById('sale-status');
+            statusEl.textContent = "Importing Master Products...";
 
-        const statusEl = document.getElementById('sale-status');
-        statusEl.textContent = "Importing Master Products...";
+            try {
+                const res = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+                });
 
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
-            });
+                const masterItems = await res.json();
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!Array.isArray(masterItems) || masterItems.length === 0) {
+                    return showMessage("Master database returned no items.");
+                }
 
-            const masterItems = await res.json();
+                let importedCount = 0;
+                const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
 
-            if (!Array.isArray(masterItems) || masterItems.length === 0) {
-                return alert("Master database returned no items.");
+                for (const item of masterItems) {
+                    const normalizedBarcode = normalizeBarcode(item.barcode);
+                    if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
+
+                    const newItem = {
+                        barcode: normalizedBarcode,
+                        name: String(item.name || ""),
+                        cost: 0,
+                        category: String(item.category || "Other")
+                    };
+
+                    await saveSingleItemToSheet(newItem);
+                    inventory.push(newItem);
+                    existingBarcodes.add(normalizedBarcode);
+                    importedCount++;
+                }
+
+                saveInventoryToLocal();
+                statusEl.textContent = `✅ Imported ${importedCount} new products`;
+                showMessage(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in the Stock tab.`);
+            } catch (e) {
+                console.error(e);
+                showMessage("Import failed: " + e.message);
             }
-
-            let importedCount = 0;
-            const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
-
-            for (const item of masterItems) {
-                const normalizedBarcode = normalizeBarcode(item.barcode);
-                if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
-
-                const newItem = {
-                    barcode: normalizedBarcode,
-                    name: String(item.name || ""),
-                    cost: 0,
-                    category: String(item.category || "Other")
-                };
-
-                await saveSingleItemToSheet(newItem);
-                inventory.push(newItem);
-                existingBarcodes.add(normalizedBarcode);
-                importedCount++;
-            }
-
-            saveInventoryToLocal();
-            elements.saleStatus.textContent = `✅ Imported ${importedCount} new products`;
-            alert(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in Stock tab.`);
-
-        } catch (e) {
-            console.error(e);
-            alert("Import failed: " + e.message);
-        }
+        });
     }
 
     async function saveSingleItemToSheet(item) {
@@ -635,7 +793,7 @@
 
     async function saveStockToCloud() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return alert("Please enter your Google Sheet URL in Settings first!");
+        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL in Settings first!");
 
         let barcode = document.getElementById('stock-barcode').value.trim();
         const data = {
@@ -645,7 +803,7 @@
             category: document.getElementById('stock-cat').value
         };
 
-        if (!data.name || !data.barcode) return alert("Barcode and Item Name are required!");
+        if (!data.name || !data.barcode) return showMessage("Barcode and Item Name are required!");
 
         const saveBtn = document.getElementById('save-stock-btn');
         const statusEl = document.getElementById('stock-status');
@@ -663,7 +821,7 @@
             const result = await res.json();
 
             if (result.success) {
-                alert("✅ Item saved / updated successfully!");
+                showMessage("✅ Item saved / updated successfully!");
                 const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
                 if (index !== -1) {
                     inventory[index] = { ...inventory[index], ...data };
@@ -672,10 +830,10 @@
                 }
                 saveInventoryToLocal();
             } else {
-                alert("Save failed: " + (result.error || "Unknown error"));
+                showMessage("Save failed: " + (result.error || "Unknown error"));
             }
         } catch (e) {
-            alert("Connection error: " + e.message);
+            showMessage("Connection error: " + e.message);
         } finally {
             saveBtn.disabled = false;
             statusEl.textContent = "";
@@ -706,10 +864,10 @@
     }
 
     function addToCart(barcodeStr) {
-        if (dailyCount >= DAILY_LIMIT) return alert("Daily limit reached – upgrade!");
+        if (dailyCount >= DAILY_LIMIT) return showMessage("Daily limit reached – upgrade!");
         const normalized = normalizeBarcode(barcodeStr);
         const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (!item) return alert("Item not found.");
+        if (!item) return showMessage("Item not found.");
         
         const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
         if (existing) existing.qty++;
@@ -733,40 +891,42 @@
     }
 
     function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
-    function clearCart() { if (confirm("Clear cart?")) { cart = []; renderCart(); } }
+
+    function clearCart() { 
+        showConfirm("Clear cart?", () => { cart = []; renderCart(); });
+    }
 
     function checkout() {
         if (!cart.length) return;
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
-        const cashReceived = prompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2));
 
-        if (cashReceived === null) return;
-        const cash = parseFloat(cashReceived);
-        if (isNaN(cash) || cash < total) {
-            alert("Invalid amount or not enough cash!");
-            return;
-        }
+        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
+            if (cash < total) {
+                showMessage("Not enough cash received!");
+                return;
+            }
 
-        const change = cash - total;
+            const change = cash - total;
 
-        // Log transaction
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        transactions.unshift({
-            time: timeStr,
-            total: total.toFixed(2),
-            items: cart.length,
-            change: change.toFixed(2)
+            // Log transaction
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            transactions.unshift({
+                time: timeStr,
+                total: total.toFixed(2),
+                items: cart.length,
+                change: change.toFixed(2)
+            });
+            if (transactions.length > 5) transactions.pop();
+            localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
+            renderTransactionLog();
+
+            addToDailyTotal(total);
+
+            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`, () => {
+                clearCart();
+            });
         });
-        if (transactions.length > 5) transactions.pop();
-        localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
-        renderTransactionLog();
-
-        addToDailyTotal(total);
-
-        alert(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`);
-
-        clearCart();
     }
 
     function loadTransactions() {
@@ -785,362 +945,44 @@
         `).join('');
     }
 
-    // ==================== FLOAT & CASH UP ====================
+    // ==================== CASH UP WITH FLOAT ====================
     function showCashUp() {
         const expectedSales = dailyTotal;
         const expectedCash = startingFloat + expectedSales;
 
-        let cashCounted = prompt(`CASH UP\n\nExpected cash (Float + Sales): R${expectedCash.toFixed(2)}\n\nEnter actual cash counted in drawer:`, expectedCash.toFixed(2));
-        if (cashCounted === null) return;
-        cashCounted = parseFloat(cashCounted);
+        showPrompt(`Cash Up\n\nExpected cash (Float + Sales): R${expectedCash.toFixed(2)}\n\nEnter actual cash counted in drawer:`, 
+            expectedCash.toFixed(2), 
+            (cashCounted) => {
 
-        let cardTotal = parseFloat(prompt("Enter total from card slips / card payments:", "0") || "0");
+            showPrompt("Enter total from card slips / card payments:", "0", (cardTotal) => {
 
-        const actualTotal = cashCounted + cardTotal;
-        const variance = actualTotal - expectedCash;
+                const actualTotal = cashCounted + cardTotal;
+                const variance = actualTotal - expectedCash;
 
-        let message = `CASH UP SUMMARY\n\n`;
-        message += `Starting Float:     R${startingFloat.toFixed(2)}\n`;
-        message += `Today's Sales:      R${expectedSales.toFixed(2)}\n`;
-        message += `────────────────────\n`;
-        message += `Expected Cash:      R${expectedCash.toFixed(2)}\n`;
-        message += `Cash Counted:       R${cashCounted.toFixed(2)}\n`;
-        message += `Card Payments:      R${cardTotal.toFixed(2)}\n`;
-        message += `Actual Total:       R${actualTotal.toFixed(2)}\n`;
-        message += `Variance:           R${variance.toFixed(2)}\n\n`;
+                let summary = `CASH UP SUMMARY\n\n`;
+                summary += `Starting Float:     R${startingFloat.toFixed(2)}\n`;
+                summary += `Today's Sales:      R${expectedSales.toFixed(2)}\n`;
+                summary += `────────────────────\n`;
+                summary += `Expected Cash:      R${expectedCash.toFixed(2)}\n`;
+                summary += `Cash Counted:       R${cashCounted.toFixed(2)}\n`;
+                summary += `Card Payments:      R${cardTotal.toFixed(2)}\n`;
+                summary += `Actual Total:       R${actualTotal.toFixed(2)}\n`;
+                summary += `Variance:           R${variance.toFixed(2)}\n\n`;
 
-        if (variance > 0) message += `✅ You are OVER by R${variance.toFixed(2)}`;
-        else if (variance < 0) message += `⚠️ You are SHORT by R${Math.abs(variance).toFixed(2)}`;
-        else message += `✅ Perfect match! No variance.`;
+                if (variance > 0) summary += `✅ You are OVER by R${variance.toFixed(2)}`;
+                else if (variance < 0) summary += `⚠️ You are SHORT by R${Math.abs(variance).toFixed(2)}`;
+                else summary += `✅ Perfect match!`;
 
-        alert(message);
-
-        // Ask to set new float for next shift
-        if (confirm("Would you like to set the starting float for tomorrow's shift?")) {
-            let newFloat = prompt("Enter starting float for next shift:", cashCounted.toFixed(2));
-            if (newFloat !== null) {
-                startingFloat = parseFloat(newFloat) || 0;
-                localStorage.setItem(floatKey, startingFloat);
-                alert(`Starting float for tomorrow set to R${startingFloat.toFixed(2)}`);
-            }
-        }
-    }
-
-    // Rest of your scanner and other functions remain the same as previous version
-    // (startScanner, stopScanner, fetchInventoryFromSheet, etc.)
-
-    async function startScanner(mode) {
-        if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
-            return alert("Daily free limit reached. Upgrade for unlimited sales!");
-
-        if (typeof Quagga === 'undefined') return alert("Scanner library not loaded.");
-
-        if (currentMediaStream) {
-            currentMediaStream.getTracks().forEach(track => track.stop());
-            currentMediaStream = null;
-        }
-
-        currentScanMode = mode;
-        lastDetectionTime = 0;
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: { ideal: "environment" },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
+                showMessage(summary, () => {
+                    showPrompt("Enter starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
+                        startingFloat = newFloat;
+                        localStorage.setItem(floatKey, startingFloat);
+                        showMessage(`Starting float for tomorrow set to R${startingFloat.toFixed(2)}`);
+                    });
+                });
             });
-
-            currentMediaStream = stream;
-
-            document.getElementById('interactive').style.display = 'block';
-            document.getElementById('stop-scan-btn').style.display = 'block';
-            isScannerRunning = true;
-
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.getElementById('interactive'),
-                    constraints: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                },
-                locator: { patchSize: "medium", halfSample: true },
-                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
-                frequency: 15,
-                decoder: {
-                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
-                    multiple: false
-                },
-                locate: true
-            }, (err) => {
-                if (err) {
-                    alert("Scanner failed to start: " + err);
-                    stopScanner();
-                    return;
-                }
-                Quagga.start();
-            });
-
-            Quagga.onDetected((data) => {
-                const now = Date.now();
-                if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
-                lastDetectionTime = now;
-
-                const code = data.codeResult.code;
-                if (navigator.vibrate) navigator.vibrate(80);
-
-                if (currentScanMode === 'sale') {
-                    addToCart(code);
-                    elements.saleStatus.textContent = `Added: ${code}`;
-                    setTimeout(stopScanner, 400);
-                    incrementDailyCount();
-                } else {
-                    document.getElementById('stock-barcode').value = code;
-                    autoFillFromBarcode(code);
-                    stopScanner();
-                }
-            });
-
-        } catch (e) {
-            alert(`Camera error: ${e.name}\nTry restarting your phone.`);
-            stopScanner();
-        }
+        });
     }
-
-    function stopScanner() {
-        if (Quagga && isScannerRunning) Quagga.stop();
-        if (currentMediaStream) {
-            currentMediaStream.getTracks().forEach(track => track.stop());
-            currentMediaStream = null;
-        }
-        document.getElementById('interactive').style.display = 'none';
-        document.getElementById('stop-scan-btn').style.display = 'none';
-        isScannerRunning = false;
-    }
-
-    function loadInventoryFromLocal() {
-        const saved = localStorage.getItem('tuckshop_inventory');
-        if (saved) {
-            inventory = JSON.parse(saved);
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from device`;
-        } else {
-            elements.saleStatus.textContent = "No local data yet.";
-        }
-    }
-
-    function saveInventoryToLocal() {
-        localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
-    }
-
-    async function fetchInventoryFromSheet() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) {
-            alert("Please enter your Google Sheet URL first.");
-            return;
-        }
-
-        elements.saleStatus.textContent = "Loading from your Google Sheet...";
-
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const rawData = await res.json();
-
-            inventory = rawData.map(row => ({
-                barcode: normalizeBarcode(row.Barcode || row.barcode || ""),
-                name: String(row.Name || row.name || ""),
-                cost: parseFloat(row.Cost || row.cost || 0),
-                category: String(row.Category || row.category || "Other")
-            })).filter(item => item.barcode);
-
-            saveInventoryToLocal();
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from your sheet`;
-        } catch (e) {
-            console.error("Fetch error:", e);
-            elements.saleStatus.textContent = "❌ Failed to load from sheet";
-        }
-    }
-
-    async function importMasterProducts() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return alert("Please enter your Google Sheet URL first!");
-
-        if (!confirm("Import products from Master Database?\n\nWarning: Prices are NOT included.")) return;
-
-        const statusEl = document.getElementById('sale-status');
-        statusEl.textContent = "Importing Master Products...";
-
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const masterItems = await res.json();
-
-            if (!Array.isArray(masterItems) || masterItems.length === 0) {
-                return alert("Master database returned no items.");
-            }
-
-            let importedCount = 0;
-            const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
-
-            for (const item of masterItems) {
-                const normalizedBarcode = normalizeBarcode(item.barcode);
-                if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
-
-                const newItem = {
-                    barcode: normalizedBarcode,
-                    name: String(item.name || ""),
-                    cost: 0,
-                    category: String(item.category || "Other")
-                };
-
-                await saveSingleItemToSheet(newItem);
-                inventory.push(newItem);
-                existingBarcodes.add(normalizedBarcode);
-                importedCount++;
-            }
-
-            saveInventoryToLocal();
-            elements.saleStatus.textContent = `✅ Imported ${importedCount} new products`;
-            alert(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in Stock tab.`);
-
-        } catch (e) {
-            console.error(e);
-            alert("Import failed: " + e.message);
-        }
-    }
-
-    async function saveSingleItemToSheet(item) {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return;
-        try {
-            await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
-            });
-        } catch (e) {
-            console.error("Failed to save item:", e);
-        }
-    }
-
-    async function saveStockToCloud() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return alert("Please enter your Google Sheet URL in Settings first!");
-
-        let barcode = document.getElementById('stock-barcode').value.trim();
-        const data = {
-            barcode: normalizeBarcode(barcode),
-            name: document.getElementById('stock-name').value.trim(),
-            cost: parseFloat(document.getElementById('stock-cost').value) || 0,
-            category: document.getElementById('stock-cat').value
-        };
-
-        if (!data.name || !data.barcode) return alert("Barcode and Item Name are required!");
-
-        const saveBtn = document.getElementById('save-stock-btn');
-        const statusEl = document.getElementById('stock-status');
-
-        saveBtn.disabled = true;
-        statusEl.textContent = "Saving / Updating...";
-
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
-            });
-
-            const result = await res.json();
-
-            if (result.success) {
-                alert("✅ Item saved / updated successfully!");
-                const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
-                if (index !== -1) {
-                    inventory[index] = { ...inventory[index], ...data };
-                } else {
-                    inventory.push(data);
-                }
-                saveInventoryToLocal();
-            } else {
-                alert("Save failed: " + (result.error || "Unknown error"));
-            }
-        } catch (e) {
-            alert("Connection error: " + e.message);
-        } finally {
-            saveBtn.disabled = false;
-            statusEl.textContent = "";
-        }
-    }
-
-    function handleSearch(val) {
-        if (val.length < 2) {
-            elements.searchResults.style.display = 'none';
-            return;
-        }
-        const lower = val.toLowerCase();
-        const filtered = inventory.filter(i => 
-            (i.name || '').toLowerCase().includes(lower) || 
-            normalizeBarcode(i.barcode) === normalizeBarcode(val)
-        );
-
-        elements.searchResults.innerHTML = filtered.length ? 
-            filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
-            `<div style="padding:12px;color:#888;">No matching items found</div>`;
-        elements.searchResults.style.display = 'block';
-    }
-
-    function getPrice(item) {
-        const cat = item.category || 'Other';
-        const markup = parseFloat(localStorage.getItem('markup-' + cat)) || 20;
-        return (Number(item.cost || 0) * (1 + markup / 100)).toFixed(2);
-    }
-
-    function addToCart(barcodeStr) {
-        if (dailyCount >= DAILY_LIMIT) return alert("Daily limit reached – upgrade!");
-        const normalized = normalizeBarcode(barcodeStr);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (!item) return alert("Item not found.");
-        
-        const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
-        if (existing) existing.qty++;
-        else cart.push({ ...item, qty: 1, price: getPrice(item) });
-
-        elements.manualSearch.value = '';
-        elements.searchResults.style.display = 'none';
-        renderCart();
-        incrementDailyCount();
-    }
-
-    function renderCart() {
-        elements.cartList.innerHTML = cart.map((i, idx) => `
-            <div class="cart-item">
-                <span><b>${i.name}</b> x${i.qty}</span>
-                <span>R${(i.price * i.qty).toFixed(2)} <button onclick="removeFromCart(${idx})" style="color:red;">✕</button></span>
-            </div>
-        `).join('');
-        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
-        elements.grandTotal.textContent = 'R' + total.toFixed(2);
-    }
-
-    function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
-    function clearCart() { if (confirm("Clear cart?")) { cart = []; renderCart(); } }
 </script>
 </body>
 </html>
