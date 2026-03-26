@@ -25,6 +25,7 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-gray { background: var(--gray); color: white; }
         .btn-create { background: #10b981; color: white; }
+        .btn-cashup { background: #7c3aed; color: white; }
         .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
         #search-results, #stock-search-results { 
             position: absolute; background: white; width: 100%; border: 1px solid #e2e8f0; 
@@ -58,12 +59,16 @@
             max-height: 180px; overflow-y: auto; background: #f8fafc; 
             padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
         }
+        .cashup-summary {
+            background: #f3e8ff; padding: 16px; border-radius: 10px; margin: 12px 0;
+            border: 2px solid #c4b5fd;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="beta-banner">🔬 BETA TESTING VERSION - Please report any issues you find</div>
+    <div class="beta-banner">🔬 BETA TESTING VERSION - Please report any issues</div>
     
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
     <div class="watermark">Free testing version for spaza shops • Version 0.5</div>
@@ -91,6 +96,7 @@
             </div>
             <button class="btn btn-save" onclick="checkout()">Complete Sale</button>
             <button class="btn btn-gray" onclick="clearCart()">Clear Cart</button>
+            <button class="btn btn-cashup" onclick="showCashUp()">Cash Up / Float Check</button>
         </div>
         <div id="sale-status" class="status"></div>
         
@@ -168,14 +174,12 @@
                 📖 How to Use Tuckshop POS Beta <span>▼</span>
             </div>
             <div class="accordion-content">
-                1. Tap "Create New Shared Sheet" (recommended for new users)<br>
-                2. Paste the copied URL and tap "Save My Sheet & Sync"<br>
-                3. Tap "Refresh Inventory from My Sheet" to load your products<br>
-                4. Go to Sale tab: Scan items or search → add to cart<br>
-                5. Tap "Complete Sale" → enter cash received → see exact change<br>
-                6. Use Stock tab to add or edit items<br>
-                7. Change markups anytime in Settings<br><br>
-                <em>This is a Beta version. Please report any issues you find.</em>
+                1. Tap "Create New Shared Sheet" (recommended)<br>
+                2. Paste the URL and tap "Save My Sheet & Sync"<br>
+                3. Refresh Inventory<br>
+                4. Scan & sell in Sale tab<br>
+                5. At end of day, tap "Cash Up / Float Check"<br><br>
+                <em>This is a Beta version. Please report any issues.</em>
             </div>
         </div>
 
@@ -191,7 +195,7 @@
 
     let inventory = [];
     let cart = [];
-    let transactions = [];           // Last 5 sales
+    let transactions = [];
     let isScannerRunning = false;
     let currentScanMode = null;
     let lastDetectionTime = 0;
@@ -285,14 +289,14 @@
     }
 
     function createNewSheet() {
-        if (!confirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share (top right)\n2. Set to 'Anyone with the link'\n3. Set permission to 'Editor'\n4. Copy the URL and paste it below.\n\nContinue?")) return;
+        if (!confirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the URL and paste it below.\n\nContinue?")) return;
 
         const statusEl = document.getElementById('sale-status');
         statusEl.textContent = "Opening new Google Sheet...";
 
         window.open("https://docs.google.com/spreadsheets/create", "_blank");
 
-        statusEl.textContent = "✅ New sheet opened. Set sharing to 'Anyone with the link → Editor', then paste the URL below.";
+        statusEl.textContent = "✅ New sheet opened. Set sharing and paste URL below.";
     }
 
     function saveUserSheetURL() {
@@ -776,6 +780,47 @@
         `).join('');
     }
 
+    // ==================== CASH UP / FLOAT MANAGEMENT ====================
+    function showCashUp() {
+        const expected = dailyTotal;
+        const cashInDrawer = prompt(`Cash Up\n\nExpected from sales: R${expected.toFixed(2)}\n\nEnter actual cash in drawer:`, expected.toFixed(2));
+        if (cashInDrawer === null) return;
+
+        const cash = parseFloat(cashInDrawer);
+        if (isNaN(cash)) {
+            alert("Please enter a valid amount.");
+            return;
+        }
+
+        const cardSlips = parseFloat(prompt("Enter total from card slips / card payments:", "0") || "0");
+
+        const actualTotal = cash + cardSlips;
+        const difference = actualTotal - expected;
+
+        let message = `CASH UP SUMMARY\n\n`;
+        message += `Expected from sales: R${expected.toFixed(2)}\n`;
+        message += `Cash in drawer:     R${cash.toFixed(2)}\n`;
+        message += `Card slips:         R${cardSlips.toFixed(2)}\n`;
+        message += `────────────────────\n`;
+        message += `Actual total:       R${actualTotal.toFixed(2)}\n`;
+        message += `Difference:         R${difference.toFixed(2)}\n\n`;
+
+        if (difference > 0) {
+            message += `✅ You are OVER by R${difference.toFixed(2)}`;
+        } else if (difference < 0) {
+            message += `⚠️ You are SHORT by R${Math.abs(difference).toFixed(2)}`;
+        } else {
+            message += `✅ Perfect match!`;
+        }
+
+        alert(message);
+
+        // Optional: Reset daily after cash up
+        if (confirm("Reset daily sales counter for tomorrow?")) {
+            resetDailySales();
+        }
+    }
+
     // ==================== SCANNER ====================
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
@@ -870,6 +915,225 @@
         document.getElementById('stop-scan-btn').style.display = 'none';
         isScannerRunning = false;
     }
+
+    function loadInventoryFromLocal() {
+        const saved = localStorage.getItem('tuckshop_inventory');
+        if (saved) {
+            inventory = JSON.parse(saved);
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from device`;
+        } else {
+            elements.saleStatus.textContent = "No local data yet.";
+        }
+    }
+
+    function saveInventoryToLocal() {
+        localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
+    }
+
+    async function fetchInventoryFromSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) {
+            alert("Please enter your Google Sheet URL first.");
+            return;
+        }
+
+        elements.saleStatus.textContent = "Loading from your Google Sheet...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const rawData = await res.json();
+
+            inventory = rawData.map(row => ({
+                barcode: normalizeBarcode(row.Barcode || row.barcode || ""),
+                name: String(row.Name || row.name || ""),
+                cost: parseFloat(row.Cost || row.cost || 0),
+                category: String(row.Category || row.category || "Other")
+            })).filter(item => item.barcode);
+
+            saveInventoryToLocal();
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from your sheet`;
+        } catch (e) {
+            console.error("Fetch error:", e);
+            elements.saleStatus.textContent = "❌ Failed to load from sheet";
+        }
+    }
+
+    async function importMasterProducts() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return alert("Please enter your Google Sheet URL first!");
+
+        if (!confirm("Import products from Master Database?\n\nWarning: Prices are NOT included.")) return;
+
+        const statusEl = document.getElementById('sale-status');
+        statusEl.textContent = "Importing Master Products...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const masterItems = await res.json();
+
+            if (!Array.isArray(masterItems) || masterItems.length === 0) {
+                return alert("Master database returned no items.");
+            }
+
+            let importedCount = 0;
+            const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
+
+            for (const item of masterItems) {
+                const normalizedBarcode = normalizeBarcode(item.barcode);
+                if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
+
+                const newItem = {
+                    barcode: normalizedBarcode,
+                    name: String(item.name || ""),
+                    cost: 0,
+                    category: String(item.category || "Other")
+                };
+
+                await saveSingleItemToSheet(newItem);
+                inventory.push(newItem);
+                existingBarcodes.add(normalizedBarcode);
+                importedCount++;
+            }
+
+            saveInventoryToLocal();
+            elements.saleStatus.textContent = `✅ Imported ${importedCount} new products`;
+            alert(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in Stock tab.`);
+
+        } catch (e) {
+            console.error(e);
+            alert("Import failed: " + e.message);
+        }
+    }
+
+    async function saveSingleItemToSheet(item) {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
+            });
+        } catch (e) {
+            console.error("Failed to save item:", e);
+        }
+    }
+
+    async function saveStockToCloud() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return alert("Please enter your Google Sheet URL in Settings first!");
+
+        let barcode = document.getElementById('stock-barcode').value.trim();
+        const data = {
+            barcode: normalizeBarcode(barcode),
+            name: document.getElementById('stock-name').value.trim(),
+            cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+            category: document.getElementById('stock-cat').value
+        };
+
+        if (!data.name || !data.barcode) return alert("Barcode and Item Name are required!");
+
+        const saveBtn = document.getElementById('save-stock-btn');
+        const statusEl = document.getElementById('stock-status');
+
+        saveBtn.disabled = true;
+        statusEl.textContent = "Saving / Updating...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert("✅ Item saved / updated successfully!");
+                const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
+                if (index !== -1) {
+                    inventory[index] = { ...inventory[index], ...data };
+                } else {
+                    inventory.push(data);
+                }
+                saveInventoryToLocal();
+            } else {
+                alert("Save failed: " + (result.error || "Unknown error"));
+            }
+        } catch (e) {
+            alert("Connection error: " + e.message);
+        } finally {
+            saveBtn.disabled = false;
+            statusEl.textContent = "";
+        }
+    }
+
+    function handleSearch(val) {
+        if (val.length < 2) {
+            elements.searchResults.style.display = 'none';
+            return;
+        }
+        const lower = val.toLowerCase();
+        const filtered = inventory.filter(i => 
+            (i.name || '').toLowerCase().includes(lower) || 
+            normalizeBarcode(i.barcode) === normalizeBarcode(val)
+        );
+
+        elements.searchResults.innerHTML = filtered.length ? 
+            filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
+            `<div style="padding:12px;color:#888;">No matching items found</div>`;
+        elements.searchResults.style.display = 'block';
+    }
+
+    function getPrice(item) {
+        const cat = item.category || 'Other';
+        const markup = parseFloat(localStorage.getItem('markup-' + cat)) || 20;
+        return (Number(item.cost || 0) * (1 + markup / 100)).toFixed(2);
+    }
+
+    function addToCart(barcodeStr) {
+        if (dailyCount >= DAILY_LIMIT) return alert("Daily limit reached – upgrade!");
+        const normalized = normalizeBarcode(barcodeStr);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (!item) return alert("Item not found.");
+        
+        const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
+        if (existing) existing.qty++;
+        else cart.push({ ...item, qty: 1, price: getPrice(item) });
+
+        elements.manualSearch.value = '';
+        elements.searchResults.style.display = 'none';
+        renderCart();
+        incrementDailyCount();
+    }
+
+    function renderCart() {
+        elements.cartList.innerHTML = cart.map((i, idx) => `
+            <div class="cart-item">
+                <span><b>${i.name}</b> x${i.qty}</span>
+                <span>R${(i.price * i.qty).toFixed(2)} <button onclick="removeFromCart(${idx})" style="color:red;">✕</button></span>
+            </div>
+        `).join('');
+        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
+        elements.grandTotal.textContent = 'R' + total.toFixed(2);
+    }
+
+    function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+    function clearCart() { if (confirm("Clear cart?")) { cart = []; renderCart(); } }
 </script>
 </body>
 </html>
