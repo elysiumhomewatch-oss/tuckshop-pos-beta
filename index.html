@@ -1,1 +1,607 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tuckshop POS Free</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
+    <style>
+        :root { --primary: #2563eb; --success: #16a34a; --danger: #dc2626; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; min-height: 100vh; }
+        .container { max-width: 520px; margin: auto; background: white; padding: 16px; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+        nav { display: flex; gap: 8px; margin-bottom: 16px; }
+        nav button { flex: 1; padding: 12px; border: none; background: #e2e8f0; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        nav button.active { background: var(--primary); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #interactive.viewport { width: 100%; height: 260px; background: #000; border-radius: 12px; margin: 12px 0; display: none; overflow: hidden; }
+        #interactive.viewport video, #interactive.viewport canvas { width: 100%; height: 100%; object-fit: cover; }
+        input, select { width: 100%; padding: 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer; margin-bottom: 12px; }
+        .btn-scan { background: var(--primary); color: white; }
+        .btn-save { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-gray { background: var(--gray); color: white; }
+        .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        #search-results, #stock-search-results { 
+            position: absolute; background: white; width: 100%; border: 1px solid #e2e8f0; 
+            border-radius: 10px; max-height: 220px; overflow-y: auto; z-index: 15; 
+            display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        .search-row { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .search-row:hover { background: #f8fafc; }
+        .watermark { color: #94a3b8; font-size: 13px; text-align: center; margin: 16px 0; }
+        .upgrade-msg { background: #fef3c7; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 15px; }
+        .status { color: var(--gray); font-size: 14px; margin-top: 8px; }
+        .markup-group { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .markup-group label { flex: 0 0 100px; font-weight: 500; }
 
+        /* Collapsible Instructions */
+        .accordion {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin: 16px 0;
+            overflow: hidden;
+        }
+        .accordion-header {
+            padding: 14px;
+            background: #f1f5f9;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .accordion-content {
+            padding: 14px;
+            display: none;
+            line-height: 1.5;
+        }
+        .accordion-content.show { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Free</h2>
+    <div class="watermark">Free Level 0 – Simple & Reliable for Spaza Shops</div>
+
+    <nav>
+        <button id="nav-sale" class="active" onclick="showTab('sale')">Sale</button>
+        <button id="nav-stock" onclick="showTab('stock')">Stock</button>
+        <button id="nav-sets" onclick="showTab('sets')">Settings</button>
+    </nav>
+
+    <div id="interactive" class="viewport"></div>
+    <button id="stop-scan-btn" class="btn btn-danger" style="display:none;" onclick="stopScanner()">Close Camera</button>
+
+    <!-- SALE TAB -->
+    <div id="sale-tab" class="tab-content active">
+        <button id="scan-btn" class="btn btn-scan" onclick="startScanner('sale')">📷 Scan Item</button>
+        <div style="position:relative;">
+            <input type="text" id="manual-search" placeholder="🔍 Search name or barcode..." oninput="handleSearch(this.value)">
+            <div id="search-results"></div>
+        </div>
+        <div id="cart">
+            <div id="cart-items-list"></div>
+            <div style="display:flex; justify-content:space-between; font-size:22px; font-weight:800; padding:20px 0;">
+                <span>Total</span><span id="grand-total">R0.00</span>
+            </div>
+            <button class="btn btn-save" onclick="checkout()">Complete Sale</button>
+            <button class="btn btn-gray" onclick="clearCart()">Clear Cart</button>
+        </div>
+        <div id="sale-status" class="status"></div>
+        <div class="upgrade-msg" id="limit-msg" style="display:none;">
+            Daily free limit reached (100 items). Upgrade to continue!
+        </div>
+    </div>
+
+    <!-- STOCK TAB -->
+    <div id="stock-tab" class="tab-content">
+        <h2>Receive / Edit Goods</h2>
+        <button class="btn btn-scan" onclick="startScanner('stock')">📷 Scan Barcode</button>
+        
+        <div style="position:relative;">
+            <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
+            <div id="stock-search-results"></div>
+        </div>
+        
+        <input type="text" id="stock-name" placeholder="Item Name">
+        <input type="number" step="0.01" id="stock-cost" placeholder="Cost Price (R)">
+        <select id="stock-cat">
+            <option value="Snacks">Snacks</option>
+            <option value="Drinks">Drinks</option>
+            <option value="Other">Other</option>
+        </select>
+        <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
+        <div id="stock-status" class="status"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="sets-tab" class="tab-content">
+        <h2>Settings</h2>
+        
+        <label>Your Google Sheet URL:</label>
+        <input type="text" id="user-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." style="margin-bottom:12px;">
+        
+        <button class="btn" style="background:#334155; color:white;" onclick="saveUserSheetURL()">Save My Sheet & Sync</button>
+        <button class="btn btn-gray" style="margin-top:8px;" onclick="fetchInventoryFromSheet()">Refresh Inventory from My Sheet</button>
+        <button class="btn btn-save" style="margin-top:8px;" onclick="importMasterProducts()">Import Master Products</button>
+
+        <h3 style="margin-top:24px;">Category Markups (%)</h3>
+        <div class="markup-group">
+            <label>Snacks:</label>
+            <input type="number" id="markup-Snacks" value="20" min="0">
+        </div>
+        <div class="markup-group">
+            <label>Drinks:</label>
+            <input type="number" id="markup-Drinks" value="15" min="0">
+        </div>
+        <div class="markup-group">
+            <label>Other:</label>
+            <input type="number" id="markup-Other" value="10" min="0">
+        </div>
+        <button class="btn" style="background:#334155; color:white;" onclick="saveMarkups()">Save Markups</button>
+
+        <!-- Collapsible Usage Instructions -->
+        <div class="accordion" style="margin-top:24px;">
+            <div class="accordion-header" onclick="toggleAccordion(this)">
+                📖 How to Use Tuckshop POS Free
+                <span>▼</span>
+            </div>
+            <div class="accordion-content">
+                <strong>Welcome!</strong><br><br>
+                1. <strong>Settings Tab</strong> → Paste your Google Sheet URL and tap "Save My Sheet & Sync"<br>
+                2. Tap <strong>"Refresh Inventory from My Sheet"</strong> to load your products<br>
+                3. <strong>Sale Tab</strong>: Scan barcodes or search → items go into cart<br>
+                4. When ready, tap <strong>"Complete Sale"</strong> → enter cash received → see change to give back<br>
+                5. <strong>Stock Tab</strong>: Scan or type barcode → fill name & cost → Save<br>
+                6. Change markups anytime in Settings<br><br>
+                <em>Everything saves automatically on your phone. No internet needed after initial setup.</em>
+            </div>
+        </div>
+
+        <!-- Paid Upgrades Section -->
+        <div class="upgrade-msg" style="margin-top:16px;">
+            <strong>Want More?</strong><br><br>
+            Upgrade to unlock:<br>
+            • Unlimited daily sales (no 100-item limit)<br>
+            • Recipe system (Kota, drinks, takeaways – auto deduct ingredients)<br>
+            • Employee clock-in / payroll<br>
+            • Stock-take & reports<br>
+            • Float management & card payments<br>
+            • Multiple users & advanced analytics<br><br>
+            Contact the developer for upgrade options.
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== HARDCODED APPS SCRIPT URL ====================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx9AKjnz2PLNSUh-wNe_1uuPIipUPrScWcpCriiuOwxbeZf3LmYcTW4h0GTTuLXHkVi/exec"; 
+    // ←←← CHANGE THIS TO YOUR ACTUAL DEPLOYED APPS SCRIPT URL
+
+    let inventory = [];
+    let cart = [];
+    let isScannerRunning = false;
+    let currentScanMode = null;
+    let lastDetectionTime = 0;
+    let currentMediaStream = null;
+    const DETECTION_COOLDOWN_MS = 1800;
+    const DAILY_LIMIT = 100;
+    let dailyCount = 0;
+    let todayKey = 'tuckshop_free_today_' + new Date().toDateString();
+
+    const elements = {
+        manualSearch: document.getElementById('manual-search'),
+        searchResults: document.getElementById('search-results'),
+        cartList: document.getElementById('cart-items-list'),
+        grandTotal: document.getElementById('grand-total'),
+        saleStatus: document.getElementById('sale-status'),
+        limitMsg: document.getElementById('limit-msg')
+    };
+
+    window.onload = () => {
+        loadSettings();
+        loadMarkups();
+        loadInventoryFromLocal();
+        renderCart();
+        dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
+        checkDailyLimit();
+    };
+
+    function checkDailyLimit() {
+        if (dailyCount >= DAILY_LIMIT) {
+            elements.limitMsg.style.display = 'block';
+            document.getElementById('scan-btn').disabled = true;
+            elements.manualSearch.disabled = true;
+        } else {
+            elements.limitMsg.style.display = 'none';
+            document.getElementById('scan-btn').disabled = false;
+            elements.manualSearch.disabled = false;
+        }
+    }
+
+    function incrementDailyCount() {
+        dailyCount++;
+        localStorage.setItem(todayKey, dailyCount);
+        checkDailyLimit();
+    }
+
+    function showTab(tab) {
+        if (isScannerRunning) stopScanner();
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(tab + '-tab').classList.add('active');
+        document.getElementById('nav-' + tab).classList.add('active');
+    }
+
+    function normalizeBarcode(barcode) {
+        return String(barcode || "").trim().replace(/^0+/, '');
+    }
+
+    function saveUserSheetURL() {
+        const url = document.getElementById('user-sheet-url').value.trim();
+        if (url) {
+            localStorage.setItem('user-sheet-url', url);
+            alert("✅ Your Google Sheet URL has been saved!");
+            fetchInventoryFromSheet();
+        } else {
+            alert("Please enter your Google Sheet URL.");
+        }
+    }
+
+    function loadSettings() {
+        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
+    }
+
+    function loadMarkups() {
+        document.getElementById('markup-Snacks').value = localStorage.getItem('markup-Snacks') || 20;
+        document.getElementById('markup-Drinks').value = localStorage.getItem('markup-Drinks') || 15;
+        document.getElementById('markup-Other').value = localStorage.getItem('markup-Other') || 10;
+    }
+
+    function saveMarkups() {
+        localStorage.setItem('markup-Snacks', document.getElementById('markup-Snacks').value);
+        localStorage.setItem('markup-Drinks', document.getElementById('markup-Drinks').value);
+        localStorage.setItem('markup-Other', document.getElementById('markup-Other').value);
+        alert("Markups saved! Prices updated.");
+        renderCart();
+    }
+
+    // Collapsible Instructions
+    function toggleAccordion(header) {
+        const content = header.nextElementSibling;
+        content.classList.toggle('show');
+        const arrow = header.querySelector('span');
+        arrow.textContent = content.classList.contains('show') ? '▲' : '▼';
+    }
+
+    function autoFillFromBarcode(inputValue) {
+        if (inputValue.length < 3) return;
+        const normalized = normalizeBarcode(inputValue);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (item) {
+            document.getElementById('stock-name').value = item.name || "";
+            document.getElementById('stock-cost').value = item.cost || "";
+            document.getElementById('stock-cat').value = item.category || "Other";
+            document.getElementById('stock-status').textContent = "✅ Item found - fields populated";
+        } else {
+            document.getElementById('stock-name').value = "";
+            document.getElementById('stock-cost').value = "";
+            document.getElementById('stock-cat').value = "Other";
+            document.getElementById('stock-status').textContent = "New item - please fill details";
+        }
+    }
+
+    function handleStockSearch(val) {
+        const resultsDiv = document.getElementById('stock-search-results');
+        if (val.length < 2) {
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        const lower = val.toLowerCase();
+        const normalized = normalizeBarcode(val);
+        const filtered = inventory.filter(i => 
+            (i.name || '').toLowerCase().includes(lower) || 
+            normalizeBarcode(i.barcode) === normalized
+        );
+
+        resultsDiv.innerHTML = filtered.map(i => 
+            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">
+                ${i.name} (${i.barcode})
+            </div>`
+        ).join('');
+        resultsDiv.style.display = filtered.length ? 'block' : 'none';
+    }
+
+    function selectStockItem(barcode) {
+        const normalized = normalizeBarcode(barcode);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (item) {
+            document.getElementById('stock-barcode').value = item.barcode;
+            document.getElementById('stock-name').value = item.name || "";
+            document.getElementById('stock-cost').value = item.cost || "";
+            document.getElementById('stock-cat').value = item.category || "Other";
+            document.getElementById('stock-search-results').style.display = 'none';
+            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const resultsDiv = document.getElementById('stock-search-results');
+        if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+
+    async function startScanner(mode) {
+        if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
+            return alert("Daily free limit reached. Upgrade for unlimited sales!");
+
+        if (typeof Quagga === 'undefined') return alert("Scanner library not loaded.");
+
+        if (currentMediaStream) {
+            currentMediaStream.getTracks().forEach(track => track.stop());
+            currentMediaStream = null;
+        }
+
+        currentScanMode = mode;
+        lastDetectionTime = 0;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+            });
+
+            currentMediaStream = stream;
+            document.getElementById('interactive').style.display = 'block';
+            document.getElementById('stop-scan-btn').style.display = 'block';
+            isScannerRunning = true;
+
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('interactive'), constraints: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+                locator: { patchSize: "medium", halfSample: true },
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                frequency: 15,
+                decoder: { readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"], multiple: false },
+                locate: true
+            }, (err) => {
+                if (err) { alert("Scanner failed to start: " + err); stopScanner(); return; }
+                Quagga.start();
+            });
+
+            Quagga.onDetected((data) => {
+                const now = Date.now();
+                if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
+                lastDetectionTime = now;
+
+                const code = data.codeResult.code;
+                if (navigator.vibrate) navigator.vibrate(80);
+
+                if (currentScanMode === 'sale') {
+                    addToCart(code);
+                    elements.saleStatus.textContent = `Added: ${code}`;
+                    setTimeout(stopScanner, 400);
+                    incrementDailyCount();
+                } else {
+                    document.getElementById('stock-barcode').value = code;
+                    autoFillFromBarcode(code);
+                    stopScanner();
+                }
+            });
+        } catch (e) {
+            alert(`Camera error: ${e.name}\nTry restarting your phone.`);
+            stopScanner();
+        }
+    }
+
+    function stopScanner() {
+        if (Quagga && isScannerRunning) Quagga.stop();
+        if (currentMediaStream) currentMediaStream.getTracks().forEach(track => track.stop());
+        document.getElementById('interactive').style.display = 'none';
+        document.getElementById('stop-scan-btn').style.display = 'none';
+        isScannerRunning = false;
+    }
+
+    function loadInventoryFromLocal() {
+        const saved = localStorage.getItem('tuckshop_inventory');
+        if (saved) {
+            inventory = JSON.parse(saved);
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from device`;
+        } else {
+            elements.saleStatus.textContent = "No local data yet.";
+        }
+    }
+
+    function saveInventoryToLocal() {
+        localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
+    }
+
+    async function fetchInventoryFromSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return alert("Please enter your Google Sheet URL first.");
+
+        elements.saleStatus.textContent = "Loading from your Google Sheet...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
+            });
+
+            const rawData = await res.json();
+            inventory = rawData.map(row => ({
+                barcode: normalizeBarcode(row.Barcode || row.barcode || ""),
+                name: String(row.Name || row.name || ""),
+                cost: parseFloat(row.Cost || row.cost || 0),
+                category: String(row.Category || row.category || "Other")
+            })).filter(item => item.barcode);
+
+            saveInventoryToLocal();
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from your sheet`;
+        } catch (e) {
+            elements.saleStatus.textContent = "❌ Failed to load from sheet";
+        }
+    }
+
+    async function importMasterProducts() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return alert("Please enter your Google Sheet URL first!");
+        if (!confirm("Import products from Master Database?\n\nWarning: Prices are NOT included.")) return;
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+            });
+
+            const masterItems = await res.json();
+            let importedCount = 0;
+            const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
+
+            for (const item of masterItems) {
+                const normalizedBarcode = normalizeBarcode(item.barcode);
+                if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
+
+                const newItem = { barcode: normalizedBarcode, name: String(item.name || ""), cost: 0, category: String(item.category || "Other") };
+                await saveSingleItemToSheet(newItem);
+                inventory.push(newItem);
+                existingBarcodes.add(normalizedBarcode);
+                importedCount++;
+            }
+
+            saveInventoryToLocal();
+            elements.saleStatus.textContent = `✅ Imported ${importedCount} new products`;
+            alert(`✅ Imported ${importedCount} products!\n\nSet cost prices in Stock tab.`);
+        } catch (e) {
+            alert("Import failed: " + e.message);
+        }
+    }
+
+    async function saveSingleItemToSheet(item) {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function saveStockToCloud() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return alert("Please enter your Google Sheet URL in Settings first!");
+
+        let barcode = document.getElementById('stock-barcode').value.trim();
+        const data = {
+            barcode: normalizeBarcode(barcode),
+            name: document.getElementById('stock-name').value.trim(),
+            cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+            category: document.getElementById('stock-cat').value
+        };
+
+        if (!data.name || !data.barcode) return alert("Barcode and Item Name are required!");
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                alert("✅ Item saved / updated successfully!");
+                const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
+                if (index !== -1) inventory[index] = { ...inventory[index], ...data };
+                else inventory.push(data);
+                saveInventoryToLocal();
+            } else {
+                alert("Save failed.");
+            }
+        } catch (e) {
+            alert("Connection error: " + e.message);
+        }
+    }
+
+    function handleSearch(val) {
+        if (val.length < 2) {
+            elements.searchResults.style.display = 'none';
+            return;
+        }
+        const lower = val.toLowerCase();
+        const filtered = inventory.filter(i => 
+            (i.name || '').toLowerCase().includes(lower) || 
+            normalizeBarcode(i.barcode) === normalizeBarcode(val)
+        );
+
+        elements.searchResults.innerHTML = filtered.length ? 
+            filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
+            `<div style="padding:12px;color:#888;">No matching items found</div>`;
+        elements.searchResults.style.display = 'block';
+    }
+
+    function getPrice(item) {
+        const cat = item.category || 'Other';
+        const markup = parseFloat(localStorage.getItem('markup-' + cat)) || 20;
+        return (Number(item.cost || 0) * (1 + markup / 100)).toFixed(2);
+    }
+
+    function addToCart(barcodeStr) {
+        if (dailyCount >= DAILY_LIMIT) return alert("Daily limit reached – upgrade!");
+        const normalized = normalizeBarcode(barcodeStr);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (!item) return alert("Item not found.");
+        
+        const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
+        if (existing) existing.qty++;
+        else cart.push({ ...item, qty: 1, price: getPrice(item) });
+
+        elements.manualSearch.value = '';
+        elements.searchResults.style.display = 'none';
+        renderCart();
+        incrementDailyCount();
+    }
+
+    function renderCart() {
+        elements.cartList.innerHTML = cart.map((i, idx) => `
+            <div class="cart-item">
+                <span><b>${i.name}</b> x${i.qty}</span>
+                <span>R${(i.price * i.qty).toFixed(2)} <button onclick="removeFromCart(${idx})" style="color:red;">✕</button></span>
+            </div>
+        `).join('');
+        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
+        elements.grandTotal.textContent = 'R' + total.toFixed(2);
+    }
+
+    function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+    function clearCart() { if (confirm("Clear cart?")) { cart = []; renderCart(); } }
+
+    function checkout() {
+        if (!cart.length) return;
+        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
+        const cashReceived = prompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2));
+
+        if (cashReceived === null) return;
+        const cash = parseFloat(cashReceived);
+        if (isNaN(cash) || cash < total) {
+            alert("Invalid amount or not enough cash!");
+            return;
+        }
+
+        const change = cash - total;
+        alert(`✅ Sale Complete!\n\nTotal:          R${total.toFixed(2)}\nCash Received:  R${cash.toFixed(2)}\nChange:         R${change.toFixed(2)}\n\nThank you! Come again!`);
+
+        clearCart();
+    }
+</script>
+</body>
+</html>
