@@ -2,7 +2,7 @@
     "name": "Tuckshop POS Beta",
     "short_name": "Tuckshop POS",
     "description": "Simple POS for Spaza & Tuckshops",
-    "start_url": "./index-pos.html",
+    "start_url": "index.html",
     "scope": "./",
     "display": "standalone",
     "background_color": "#f8fafc",
