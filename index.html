@@ -135,7 +135,7 @@
 <body>
 
 <div class="container">
-    <div class="beta-banner">🔬 BETA TESTING VERSION 0.8 - Categories Improved</div>
+    <div class="beta-banner">🔬 BETA TESTING VERSION 0.9 - Persistent Categories</div>
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
     <div class="watermark">Made for Spaza & Tuckshops</div>
 
@@ -178,7 +178,7 @@
         </div>
     </div>
 
-    <!-- STOCK TAB - Enhanced with Categories & Markups -->
+    <!-- STOCK TAB -->
     <div id="stock-tab" class="tab-content">
         <h2>Stock Management</h2>
         
@@ -228,7 +228,7 @@
         <div id="stock-status" class="status"></div>
     </div>
 
-    <!-- SETTINGS TAB (cleaned up) -->
+    <!-- SETTINGS TAB -->
     <div id="sets-tab" class="tab-content">
         <h2>Settings</h2>
         <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet</button>
@@ -254,12 +254,11 @@
 </div>
 
 <script>
-    // ====================== CONFIG & CONSTANTS ======================
+    // ====================== CONFIG ======================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
 
-    // ====================== GLOBAL STATE ======================
     let inventory = [];
     let cart = [];
     let transactions = [];
@@ -289,7 +288,7 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-    // ====================== UTILITY FUNCTIONS ======================
+    // ====================== UTILITY ======================
     function normalizeBarcode(barcode) {
         return String(barcode || "").trim().replace(/^0+/, '');
     }
@@ -380,7 +379,6 @@
         const saved = localStorage.getItem('tuckshop_inventory');
         if (saved) {
             inventory = JSON.parse(saved);
-            console.log(`Loaded ${inventory.length} items from local storage`);
         }
     }
 
@@ -446,7 +444,161 @@
         });
     }
 
-    // ====================== STOCK FUNCTIONS ======================
+    // ====================== CATEGORIES PERSISTENCE ======================
+    async function loadCategoriesFromSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "getCategories", sheetUrl: sheetUrl })
+            });
+
+            const loaded = await res.json();
+            if (Array.isArray(loaded) && loaded.length > 0) {
+                categories = loaded.map(c => c.name);
+                loaded.forEach(c => {
+                    localStorage.setItem('markup-' + c.name, c.markup);
+                });
+                populateCategoryDropdown();
+            }
+        } catch (e) {
+            console.log("Using local categories");
+        }
+    }
+
+    async function saveCategoriesToSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+
+        const catData = categories.map(cat => ({
+            name: cat,
+            markup: parseFloat(localStorage.getItem('markup-' + cat)) || 10
+        }));
+
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ 
+                    action: "saveCategories", 
+                    categories: catData, 
+                    sheetUrl: sheetUrl 
+                })
+            });
+        } catch (e) {
+            console.error("Failed to save categories to sheet");
+        }
+    }
+
+    // ====================== CATEGORIES UI ======================
+    function manageCategoriesAndMarkups() {
+        let html = `<h3>Categories & Default Markups (${categories.length}/${MAX_CATEGORIES})</h3>`;
+        html += `<div style="max-height:300px; overflow-y:auto;">`;
+
+        categories.forEach(cat => {
+            const currentMarkup = localStorage.getItem('markup-' + cat) || (cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10);
+            html += `
+                <div style="display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+                    <span style="flex:1; font-weight:500;">${cat}</span>
+                    <input type="number" value="${currentMarkup}" min="0" style="width:80px; margin-right:8px;" 
+                           onchange="saveCategoryMarkup('${cat}', this.value)">
+                    <span style="font-size:13px; color:#666;">%</span>
+                    ${cat !== "Other" ? `<button onclick="removeCategory('${cat}')" style="margin-left:12px; color:red; font-size:12px;">Remove</button>` : '<small style="margin-left:12px; color:#888;">(protected)</small>'}
+                </div>`;
+        });
+
+        html += `</div>`;
+        html += `<button onclick="addNewCategoryPrompt()" class="btn btn-save" style="margin-top:12px;">+ Add New Category</button>`;
+        html += `<button onclick="resetCategoryDefaults()" class="btn btn-gray" style="margin-top:8px;">Reset to Defaults</button>`;
+
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Manage Categories & Markups";
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+        modal.style.display = 'flex';
+    }
+
+    function saveCategoryMarkup(cat, value) {
+        localStorage.setItem('markup-' + cat, parseFloat(value) || 10);
+        updatePricePreview();
+        saveCategoriesToSheet();
+    }
+
+    function addNewCategoryPrompt() {
+        if (categories.length >= MAX_CATEGORIES) {
+            alert("Maximum 15 categories reached.");
+            return;
+        }
+        const name = prompt("Enter new category name:");
+        if (!name || categories.includes(name)) return;
+
+        categories.push(name);
+        localStorage.setItem('markup-' + name, 10);
+        saveCategoriesToSheet();
+        closeModal();
+        manageCategoriesAndMarkups();
+        populateCategoryDropdown();
+    }
+
+    function removeCategory(catName) {
+        if (catName === "Other") return;
+        const affected = inventory.filter(i => i.category === catName).length;
+        showConfirm(`Delete "${catName}"?\n${affected} items will move to "Other".`, () => {
+            inventory.forEach(item => {
+                if (item.category === catName) item.category = "Other";
+            });
+            categories = categories.filter(c => c !== catName);
+            localStorage.removeItem('markup-' + catName);
+            saveCategoriesToSheet();
+            closeModal();
+            manageCategoriesAndMarkups();
+            populateCategoryDropdown();
+            saveInventoryToLocal();
+            showMessage(`Category "${catName}" removed.`);
+        });
+    }
+
+    function resetCategoryDefaults() {
+        if (confirm("Reset all category markups to defaults?")) {
+            localStorage.setItem('markup-Snacks', 20);
+            localStorage.setItem('markup-Drinks', 15);
+            localStorage.setItem('markup-Other', 10);
+            saveCategoriesToSheet();
+            closeModal();
+            manageCategoriesAndMarkups();
+            showMessage("Markups reset to defaults.");
+        }
+    }
+
+    function populateCategoryDropdown() {
+        const select = document.getElementById('stock-cat');
+        select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
+
+    // ====================== PRICE PREVIEW ======================
+    function updatePricePreview() {
+        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
+        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
+        const category = document.getElementById('stock-cat').value || "Other";
+        const previewDiv = document.getElementById('price-preview');
+
+        if (cost <= 0) {
+            previewDiv.style.display = 'none';
+            return;
+        }
+
+        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
+        const selling = (cost * (1 + markup / 100)).toFixed(2);
+
+        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
+            (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
+        previewDiv.style.display = 'block';
+    }
+
+    // ====================== STOCK FORM ======================
     function clearStockForm() {
         document.getElementById('stock-barcode').value = '';
         document.getElementById('stock-name').value = '';
@@ -461,43 +613,36 @@
     }
 
     function editItem(barcode) {
-    const normalized = normalizeBarcode(barcode);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (!item) {
-        showMessage("Item not found.");
-        return;
-    }
-
-    showTab('stock');
-    
-    document.getElementById('stock-barcode').value = item.barcode;
-    document.getElementById('stock-name').value = item.name || "";
-    document.getElementById('stock-cost').value = item.cost || "";
-    document.getElementById('stock-cat').value = item.category || "Other";
-    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-    document.getElementById('stock-qty').value = item.stockQty || 0;
-    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-
-    // FIXED: Handle expiry date properly for <input type="date">
-    if (item.expiryDate) {
-        // If it's a full ISO string, extract only the date part (YYYY-MM-DD)
-        let dateStr = item.expiryDate;
-        if (dateStr.includes('T')) {
-            dateStr = dateStr.split('T')[0];        // Remove time part
+        const normalized = normalizeBarcode(barcode);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (!item) {
+            showMessage("Item not found.");
+            return;
         }
-        document.getElementById('stock-expiry').value = dateStr;
-    } else {
-        document.getElementById('stock-expiry').value = '';
-    }
 
-    updatePricePreview();
-    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-}
+        showTab('stock');
+        
+        document.getElementById('stock-barcode').value = item.barcode;
+        document.getElementById('stock-name').value = item.name || "";
+        document.getElementById('stock-cost').value = item.cost || "";
+        document.getElementById('stock-cat').value = item.category || "Other";
+        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+        document.getElementById('stock-qty').value = item.stockQty || 0;
+        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+        if (item.expiryDate) {
+            let dateStr = item.expiryDate;
+            if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+            document.getElementById('stock-expiry').value = dateStr;
+        } else {
+            document.getElementById('stock-expiry').value = '';
+        }
+
+        updatePricePreview();
+        document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+    }
 
     function showStockInspector() {
         let issues = [];
-
         inventory.forEach(item => {
             const normBarcode = normalizeBarcode(item.barcode);
             if (!item.name || item.name.trim() === "") issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
@@ -505,7 +650,6 @@
             if (!item.category) issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
             if (item.stockQty === 0) issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
             if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
-            
             if (item.expiryDate) {
                 const expiry = new Date(item.expiryDate);
                 const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
@@ -516,12 +660,11 @@
 
         let html = `<h3>Stock Inspector</h3>`;
         if (issues.length === 0) {
-            html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
+            html += `<p style="color:var(--success);">✅ No issues found. Your stock looks good!</p>`;
         } else {
             html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
             issues.forEach(issue => {
-                html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
-                         style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
+                html += `<li onclick="editItem('${issue.barcode}'); closeModal();" style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
                     ${issue.type} — ${issue.name}
                 </li>`;
             });
@@ -588,105 +731,6 @@
             saveBtn.disabled = false;
             statusEl.textContent = "";
         }
-    }
-
-    function updatePricePreview() {
-        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
-        const category = document.getElementById('stock-cat').value || "Other";
-        const previewDiv = document.getElementById('price-preview');
-
-        if (cost <= 0) {
-            previewDiv.style.display = 'none';
-            return;
-        }
-
-        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
-        const selling = (cost * (1 + markup / 100)).toFixed(2);
-
-        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
-            (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
-        previewDiv.style.display = 'block';
-    }
-
-    // ====================== CATEGORIES & MARKUPS ======================
-    function manageCategoriesAndMarkups() {
-        let html = `<h3>Categories & Default Markups (${categories.length}/${MAX_CATEGORIES})</h3>`;
-        html += `<div style="max-height:300px; overflow-y:auto;">`;
-
-        categories.forEach(cat => {
-            const currentMarkup = localStorage.getItem('markup-' + cat) || (cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10);
-            html += `
-                <div style="display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
-                    <span style="flex:1; font-weight:500;">${cat}</span>
-                    <input type="number" id="markup-${cat}" value="${currentMarkup}" min="0" style="width:80px; margin-right:8px;" onchange="saveCategoryMarkup('${cat}', this.value)">
-                    <span style="font-size:13px; color:#666;">%</span>
-                    ${cat !== "Other" ? `<button onclick="removeCategory('${cat}')" style="margin-left:12px; color:red; font-size:12px;">Remove</button>` : '<small style="margin-left:12px; color:#888;">(protected)</small>'}
-                </div>`;
-        });
-
-        html += `</div>`;
-        html += `<button onclick="addNewCategoryPrompt()" class="btn btn-save" style="margin-top:12px;">+ Add New Category</button>`;
-        html += `<button onclick="resetCategoryDefaults()" class="btn btn-gray" style="margin-top:8px;">Reset to Defaults</button>`;
-
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Manage Categories & Markups";
-        document.getElementById('modal-body').innerHTML = html;
-        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-        modal.style.display = 'flex';
-    }
-
-    function saveCategoryMarkup(cat, value) {
-        localStorage.setItem('markup-' + cat, parseFloat(value) || 10);
-        updatePricePreview();
-    }
-
-    function addNewCategoryPrompt() {
-        if (categories.length >= MAX_CATEGORIES) {
-            alert("Maximum 15 categories reached.");
-            return;
-        }
-        const name = prompt("Enter new category name:");
-        if (!name || categories.includes(name)) return;
-
-        categories.push(name);
-        localStorage.setItem('markup-' + name, 10);
-        closeModal();
-        manageCategoriesAndMarkups();
-        populateCategoryDropdown();
-    }
-
-    function removeCategory(catName) {
-        if (catName === "Other") return;
-        const affected = inventory.filter(i => i.category === catName).length;
-        showConfirm(`Delete category "${catName}"?\n${affected} items will be moved to "Other".`, () => {
-            inventory.forEach(item => {
-                if (item.category === catName) item.category = "Other";
-            });
-            categories = categories.filter(c => c !== catName);
-            localStorage.removeItem('markup-' + catName);
-            closeModal();
-            manageCategoriesAndMarkups();
-            populateCategoryDropdown();
-            saveInventoryToLocal();
-            showMessage(`Category "${catName}" removed. Items moved to "Other".`);
-        });
-    }
-
-    function resetCategoryDefaults() {
-        if (confirm("Reset all category markups to defaults?")) {
-            localStorage.setItem('markup-Snacks', 20);
-            localStorage.setItem('markup-Drinks', 15);
-            localStorage.setItem('markup-Other', 10);
-            closeModal();
-            manageCategoriesAndMarkups();
-            showMessage("Markups reset to defaults.");
-        }
-    }
-
-    function populateCategoryDropdown() {
-        const select = document.getElementById('stock-cat');
-        select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
     // ====================== SCANNER ======================
@@ -849,78 +893,39 @@
         });
     }
 
-    // ====================== WINDOW ONLOAD ======================
-    window.onload = () => {
-        loadSettings();
-        loadInventoryFromLocal();
-        loadDailySales();
-        loadStartingFloat();
-        loadTransactions();
-        renderCart();
-        renderTransactionLog();
-        
-        dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
-        updateDailyDisplay();
-        checkDailyLimit();
-        
-        populateCategoryDropdown();
-        
-        categories.forEach(cat => {
-            if (!localStorage.getItem('markup-' + cat)) {
-                const defaultVal = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
-                localStorage.setItem('markup-' + cat, defaultVal);
-            }
+    // ====================== CASH UP ======================
+    function showCashUp() {
+        const expectedSales = dailyTotal;
+        const expectedCash = startingFloat + expectedSales;
+        showPrompt(`Cash Up\nExpected: R${expectedCash.toFixed(2)}\nCash in drawer:`, expectedCash.toFixed(2), (cashCounted) => {
+            showPrompt("Card payments total:", "0", (cardTotal) => {
+                const actual = cashCounted + cardTotal;
+                const variance = actual - expectedCash;
+                let msg = `CASH UP SUMMARY\n\n`;
+                msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
+                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
+                msg += `Expected Cash:  R${expectedCash.toFixed(2)}\n`;
+                msg += `Actual:         R${actual.toFixed(2)}\n`;
+                msg += `Variance:       R${variance.toFixed(2)}\n\n`;
+                if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
+                else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
+                else msg += `✅ Perfect match!`;
+                showMessage(msg, () => {
+                    showPrompt("Starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
+                        startingFloat = newFloat;
+                        localStorage.setItem(floatKey, startingFloat);
+                    });
+                });
+            });
         });
-    };
-
-    // ====================== AUTO-FILL & SEARCH ======================
-    function autoFillFromBarcode(inputValue) {
-        if (inputValue.length < 3) return;
-        const normalized = normalizeBarcode(inputValue);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        
-        if (item) {
-            document.getElementById('stock-name').value = item.name || "";
-            document.getElementById('stock-cost').value = item.cost || "";
-            document.getElementById('stock-cat').value = item.category || "Other";
-            document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-            document.getElementById('stock-qty').value = item.stockQty || 0;
-            document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-            document.getElementById('stock-expiry').value = item.expiryDate || "";
-            updatePricePreview();
-            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-        } else {
-            clearStockForm();
-            document.getElementById('stock-barcode').value = inputValue;
-            document.getElementById('stock-status').textContent = "New item - fill details";
-        }
-    }
-
-    function handleStockSearch(val) {
-        const resultsDiv = document.getElementById('stock-search-results');
-        if (val.length < 2) {
-            resultsDiv.style.display = 'none';
-            return;
-        }
-        const lower = val.toLowerCase();
-        const normalized = normalizeBarcode(val);
-        const filtered = inventory.filter(i =>
-            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
-        );
-        resultsDiv.innerHTML = filtered.map(i =>
-            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
-        ).join('');
-        resultsDiv.style.display = filtered.length ? 'block' : 'none';
-    }
-
-    function selectStockItem(barcode) {
-        editItem(barcode);
-        document.getElementById('stock-search-results').style.display = 'none';
     }
 
     // ====================== SETTINGS & SYNC ======================
-    function loadSettings() {
-        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
+    function createNewSheet() {
+        showConfirm("Open new Google Sheet?\nSet sharing to 'Anyone with the link - Editor' after it opens.", () => {
+            document.getElementById('sale-status').textContent = "Opening new sheet...";
+            window.open("https://docs.google.com/spreadsheets/create", "_blank");
+        });
     }
 
     function saveUserSheetURL() {
@@ -931,6 +936,10 @@
         } else {
             showMessage("Please enter your Google Sheet URL.");
         }
+    }
+
+    function loadSettings() {
+        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
     }
 
     async function fetchInventoryFromSheet() {
@@ -961,6 +970,7 @@
             saveInventoryToLocal();
             elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
             populateCategoryDropdown();
+            loadCategoriesFromSheet();   // Also load categories
         } catch (e) {
             elements.saleStatus.textContent = "❌ Failed to load from sheet";
         }
@@ -1026,13 +1036,6 @@
                 body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
             });
         } catch (e) {}
-    }
-
-    function createNewSheet() {
-        showConfirm("Open new Google Sheet?\nSet sharing to 'Anyone with the link - Editor' after it opens.", () => {
-            document.getElementById('sale-status').textContent = "Opening new sheet...";
-            window.open("https://docs.google.com/spreadsheets/create", "_blank");
-        });
     }
 
     // ====================== SCANNER ======================
@@ -1103,60 +1106,133 @@
         isScannerRunning = false;
     }
 
-    // ====================== SALE FUNCTIONS (continued) ======================
-    function addToCart(barcodeStr) {
-        if (dailyCount >= DAILY_LIMIT) return showMessage("Daily limit reached.");
-        const normalized = normalizeBarcode(barcodeStr);
+    // ====================== AUTO-FILL & SEARCH ======================
+    function autoFillFromBarcode(inputValue) {
+        if (inputValue.length < 3) return;
+        const normalized = normalizeBarcode(inputValue);
         const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (!item) return showMessage("Item not found.");
-        const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
-        if (existing) existing.qty++;
-        else cart.push({ ...item, qty: 1, price: getPrice(item) });
-        elements.manualSearch.value = '';
-        elements.searchResults.style.display = 'none';
+        
+        if (item) {
+            document.getElementById('stock-name').value = item.name || "";
+            document.getElementById('stock-cost').value = item.cost || "";
+            document.getElementById('stock-cat').value = item.category || "Other";
+            document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+            document.getElementById('stock-qty').value = item.stockQty || 0;
+            document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+            if (item.expiryDate) {
+                let dateStr = item.expiryDate;
+                if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+                document.getElementById('stock-expiry').value = dateStr;
+            } else {
+                document.getElementById('stock-expiry').value = '';
+            }
+            updatePricePreview();
+            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+        } else {
+            clearStockForm();
+            document.getElementById('stock-barcode').value = inputValue;
+            document.getElementById('stock-status').textContent = "New item - fill details";
+        }
+    }
+
+    function handleStockSearch(val) {
+        const resultsDiv = document.getElementById('stock-search-results');
+        if (val.length < 2) {
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        const lower = val.toLowerCase();
+        const normalized = normalizeBarcode(val);
+        const filtered = inventory.filter(i =>
+            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
+        );
+        resultsDiv.innerHTML = filtered.map(i =>
+            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
+        ).join('');
+        resultsDiv.style.display = filtered.length ? 'block' : 'none';
+    }
+
+    function selectStockItem(barcode) {
+        editItem(barcode);
+        document.getElementById('stock-search-results').style.display = 'none';
+    }
+
+    // ====================== WINDOW ONLOAD ======================
+    window.onload = () => {
+        loadSettings();
+        loadInventoryFromLocal();
+        loadDailySales();
+        loadStartingFloat();
+        loadTransactions();
         renderCart();
-        incrementDailyCount();
-    }
+        renderTransactionLog();
+        
+        dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
+        updateDailyDisplay();
+        checkDailyLimit();
+        
+        populateCategoryDropdown();
+        loadCategoriesFromSheet();
 
-    function removeFromCart(idx) {
-        if (idx < 0 || idx >= cart.length) return;
-        cart.splice(idx, 1);
-        renderCart();
-        decrementDailyCount();
-    }
-
-    function getPrice(item) {
-        const cat = item.category || 'Other';
-        const markup = item.customMarkup > 0 ? item.customMarkup : (parseFloat(localStorage.getItem('markup-' + cat)) || 20);
-        return (Number(item.cost || 0) * (1 + markup / 100)).toFixed(2);
-    }
-
-    // ====================== CASH UP ======================
-    function showCashUp() {
-        const expectedSales = dailyTotal;
-        const expectedCash = startingFloat + expectedSales;
-        showPrompt(`Cash Up\nExpected: R${expectedCash.toFixed(2)}\nCash in drawer:`, expectedCash.toFixed(2), (cashCounted) => {
-            showPrompt("Card payments total:", "0", (cardTotal) => {
-                const actual = cashCounted + cardTotal;
-                const variance = actual - expectedCash;
-                let msg = `CASH UP SUMMARY\n\n`;
-                msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
-                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
-                msg += `Expected Cash:  R${expectedCash.toFixed(2)}\n`;
-                msg += `Actual:         R${actual.toFixed(2)}\n`;
-                msg += `Variance:       R${variance.toFixed(2)}\n\n`;
-                if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
-                else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
-                else msg += `✅ Perfect match!`;
-                showMessage(msg, () => {
-                    showPrompt("Starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
-                        startingFloat = newFloat;
-                        localStorage.setItem(floatKey, startingFloat);
-                    });
-                });
-            });
+        categories.forEach(cat => {
+            if (!localStorage.getItem('markup-' + cat)) {
+                const defaultVal = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
+                localStorage.setItem('markup-' + cat, defaultVal);
+            }
         });
+    };
+
+    // ====================== CATEGORIES PERSISTENCE ======================
+    async function loadCategoriesFromSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "getCategories", sheetUrl: sheetUrl })
+            });
+
+            const loaded = await res.json();
+            if (Array.isArray(loaded) && loaded.length > 0) {
+                categories = loaded.map(c => c.name);
+                loaded.forEach(c => {
+                    localStorage.setItem('markup-' + c.name, c.markup);
+                });
+                populateCategoryDropdown();
+            }
+        } catch (e) {
+            console.log("Using local categories");
+        }
     }
+
+    async function saveCategoriesToSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return;
+
+        const catData = categories.map(cat => ({
+            name: cat,
+            markup: parseFloat(localStorage.getItem('markup-' + cat)) || 10
+        }));
+
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ 
+                    action: "saveCategories", 
+                    categories: catData, 
+                    sheetUrl: sheetUrl 
+                })
+            });
+        } catch (e) {
+            console.error("Failed to save categories");
+        }
+    }
+
+    // Make sure to call saveCategoriesToSheet after category changes (already included in the category functions)
+
 </script>
 </body>
 </html>
