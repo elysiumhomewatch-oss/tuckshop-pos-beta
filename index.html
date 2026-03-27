@@ -461,27 +461,39 @@
     }
 
     function editItem(barcode) {
-        const normalized = normalizeBarcode(barcode);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (!item) {
-            showMessage("Item not found.");
-            return;
-        }
-
-        showTab('stock');
-        
-        document.getElementById('stock-barcode').value = item.barcode;
-        document.getElementById('stock-name').value = item.name || "";
-        document.getElementById('stock-cost').value = item.cost || "";
-        document.getElementById('stock-cat').value = item.category || "Other";
-        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-        document.getElementById('stock-qty').value = item.stockQty || 0;
-        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-        document.getElementById('stock-expiry').value = item.expiryDate || "";
-
-        updatePricePreview();
-        document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+    const normalized = normalizeBarcode(barcode);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (!item) {
+        showMessage("Item not found.");
+        return;
     }
+
+    showTab('stock');
+    
+    document.getElementById('stock-barcode').value = item.barcode;
+    document.getElementById('stock-name').value = item.name || "";
+    document.getElementById('stock-cost').value = item.cost || "";
+    document.getElementById('stock-cat').value = item.category || "Other";
+    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+    document.getElementById('stock-qty').value = item.stockQty || 0;
+    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+
+    // FIXED: Handle expiry date properly for <input type="date">
+    if (item.expiryDate) {
+        // If it's a full ISO string, extract only the date part (YYYY-MM-DD)
+        let dateStr = item.expiryDate;
+        if (dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];        // Remove time part
+        }
+        document.getElementById('stock-expiry').value = dateStr;
+    } else {
+        document.getElementById('stock-expiry').value = '';
+    }
+
+    updatePricePreview();
+    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+}
 
     function showStockInspector() {
         let issues = [];
