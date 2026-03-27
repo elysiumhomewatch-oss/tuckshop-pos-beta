@@ -262,8 +262,18 @@
 
     // ====================== UTILITY ======================
     function normalizeBarcode(barcode) {
-        return String(barcode || "").trim().replace(/^0+/, '');
-    }
+    return String(barcode || "").trim();   // keep full value
+}
+
+function barcodesMatch(a, b) {
+    const na = normalizeBarcode(a);
+    const nb = normalizeBarcode(b);
+    if (na === nb) return true;
+    // Handle EAN-13 <-> UPC-A
+    if (na.length === 13 && na.startsWith('0') && nb === na.substring(1)) return true;
+    if (nb.length === 13 && nb.startsWith('0') && na === nb.substring(1)) return true;
+    return false;
+}
 
     // ====================== GLOBAL VARIABLES ======================
     let inventory = [];
@@ -717,7 +727,7 @@
         if (val.length < 2) { elements.searchResults.style.display = 'none'; return; }
         const lower = val.toLowerCase();
         const filtered = inventory.filter(i =>
-            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalizeBarcode(val)
+            (i.name || '').toLowerCase().includes(lower) || barcodesMatch(i.barcode, val)
         );
         elements.searchResults.innerHTML = filtered.length ?
             filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
@@ -799,6 +809,25 @@
                     item.stockQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
                 }
             });
+            // === ADD THIS RIGHT AFTER THE cart.forEach stock deduction ===
+const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+if (sheetUrl && cart.length) {
+    const soldItems = cart.map(cartItem => {
+        const norm = normalizeBarcode(cartItem.barcode);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === norm);
+        return { barcode: norm, stockQty: item ? item.stockQty : 0 };
+    });
+
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            action: "updateSoldItems",
+            sheetUrl: sheetUrl,
+            soldItems: soldItems
+        })
+    }).catch(e => console.error("Stock sync failed", e));
+}
 
             // Log transaction
             const now = new Date();
