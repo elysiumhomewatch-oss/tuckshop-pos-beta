@@ -972,6 +972,32 @@ function handleStockSearch(val) {
     resultsDiv.style.display = filtered.length ? 'block' : 'none';
 }
 
+// ====================== EDIT ITEM FROM SEARCH ======================
+function editItem(barcode) {
+    const normalized = normalizeBarcode(barcode);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (!item) {
+        showMessage("Item not found.");
+        return;
+    }
+
+    // Switch to Stock tab and fill the form
+    showTab('stock');
+    
+    document.getElementById('stock-barcode').value = item.barcode;
+    document.getElementById('stock-name').value = item.name || "";
+    document.getElementById('stock-cost').value = item.cost || "";
+    document.getElementById('stock-cat').value = item.category || "Other";
+    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+    document.getElementById('stock-qty').value = item.stockQty || 0;
+    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+    document.getElementById('stock-expiry').value = item.expiryDate || "";
+
+    updatePricePreview();
+    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+}
+
 // Prevent closing search results when clicking inside
 document.addEventListener('click', (e) => {
     const resultsDiv = document.getElementById('stock-search-results');
