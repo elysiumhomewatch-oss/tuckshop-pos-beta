@@ -183,42 +183,56 @@
     </div>
 
     <!-- ENHANCED STOCK TAB -->
-    <div id="stock-tab" class="tab-content">
-        <h2>Stock Management</h2>
-        
-        <div style="display:flex; gap:8px; margin-bottom:16px;">
-            <button class="btn btn-scan" style="flex:1" onclick="startScanner('stock')">📷 Scan Barcode</button>
-            <button class="btn btn-inspector" style="flex:1" onclick="showStockInspector()">🔍 Stock Inspector</button>
-        </div>
-
-        <button class="btn btn-gray" onclick="manageCategories()">Manage Categories (Max 15)</button>
-
-        <div style="position:relative;">
-            <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
-            <div id="stock-search-results"></div>
-        </div>
-
-        <input type="text" id="stock-name" placeholder="Item Name *">
-        <input type="number" step="0.01" id="stock-cost" placeholder="Cost Price (R)" oninput="updatePricePreview()">
-        
-        <select id="stock-cat" onchange="updatePricePreview()"></select>
-
-        <input type="number" step="0.1" id="stock-custom-markup" placeholder="Custom Markup % (overrides category)" oninput="updatePricePreview()">
-
-        <div style="display: flex; gap: 8px;">
-            <input type="number" id="stock-qty" placeholder="Current Stock Qty" style="flex:1">
-            <input type="number" id="stock-min-level" placeholder="Min Stock Level" value="5" style="flex:1">
-        </div>
-
-        <input type="date" id="stock-expiry" placeholder="Expiry Date (optional)">
-
-        <div id="price-preview" class="price-preview" style="display:none;"></div>
-
-        <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
-        <button class="btn btn-gray" onclick="clearStockForm()">Clear Form (New Item)</button>
-
-        <div id="stock-status" class="status"></div>
+    <!-- ENHANCED STOCK TAB - Replace your current stock-tab div with this -->
+<div id="stock-tab" class="tab-content">
+    <h2>Stock Management</h2>
+    
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="btn btn-scan" style="flex:1" onclick="startScanner('stock')">📷 Scan Barcode</button>
+        <button class="btn btn-inspector" style="flex:1" onclick="showStockInspector()">🔍 Stock Inspector</button>
     </div>
+
+    <button class="btn btn-gray" onclick="manageCategories()">Manage Categories (Max 15)</button>
+
+    <div style="position:relative;">
+        <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
+        <div id="stock-search-results"></div>
+    </div>
+
+    <!-- LABELLED FORM FIELDS -->
+    <label for="stock-name"><strong>Item Name *</strong></label>
+    <input type="text" id="stock-name" placeholder="e.g. Coca Cola 500ml">
+
+    <label for="stock-cost"><strong>Cost Price (R)</strong></label>
+    <input type="number" step="0.01" id="stock-cost" placeholder="12.50" oninput="updatePricePreview()">
+
+    <label for="stock-cat"><strong>Category</strong></label>
+    <select id="stock-cat" onchange="updatePricePreview()"></select>
+
+    <label for="stock-custom-markup"><strong>Custom Markup %</strong> <small>(optional - overrides category)</small></label>
+    <input type="number" step="0.1" id="stock-custom-markup" placeholder="25" oninput="updatePricePreview()">
+
+    <div style="display: flex; gap: 12px;">
+        <div style="flex: 1;">
+            <label for="stock-qty"><strong>Current Stock Qty</strong></label>
+            <input type="number" id="stock-qty" placeholder="0">
+        </div>
+        <div style="flex: 1;">
+            <label for="stock-min-level"><strong>Min Stock Level</strong></label>
+            <input type="number" id="stock-min-level" placeholder="5" value="5">
+        </div>
+    </div>
+
+    <label for="stock-expiry"><strong>Expiry Date</strong> <small>(optional)</small></label>
+    <input type="date" id="stock-expiry">
+
+    <div id="price-preview" class="price-preview" style="display:none;"></div>
+
+    <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
+    <button class="btn btn-gray" onclick="clearStockForm()">Clear Form (New Item)</button>
+
+    <div id="stock-status" class="status"></div>
+</div>
 
     <!-- SETTINGS TAB -->
     <div id="sets-tab" class="tab-content">
