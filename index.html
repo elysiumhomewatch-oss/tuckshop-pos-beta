@@ -288,29 +288,22 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-    // ====================== MODAL SYSTEM ======================
-
-    // ====================== INVENTORY LOAD/SAVE ======================
-function loadInventoryFromLocal() {
-    const saved = localStorage.getItem('tuckshop_inventory');
-    if (saved) {
-        inventory = JSON.parse(saved);
-        console.log(`Loaded ${inventory.length} items from local storage`);
-    } else {
-        console.log("No local inventory found yet");
-    }
-}
-
-function saveInventoryToLocal() {
-    localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
-}
-
 // ====================== UTILITY FUNCTIONS ======================
 function normalizeBarcode(barcode) {
     return String(barcode || "").trim().replace(/^0+/, '');
 }
+
+function showTab(tab) {
+        if (isScannerRunning) stopScanner();
     
-    function updateDailyDisplay() {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    
+        document.getElementById(tab + '-tab').classList.add('active');
+        document.getElementById('nav-' + tab).classList.add('active');
+}
+    
+function updateDailyDisplay() {
     elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
     elements.dailyItemsEl.textContent = dailyCount;
 }
@@ -325,41 +318,8 @@ function checkDailyLimit() {
     }
 }
 
-function loadDailySales() {
-    dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
-    updateDailyDisplay();
-}
+    // ====================== MODAL SYSTEM ======================
 
-function loadStartingFloat() {
-    startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
-}
-
-function loadTransactions() {
-    const saved = localStorage.getItem('tuckshop_transactions');
-    if (saved) transactions = JSON.parse(saved);
-}
-
-function renderTransactionLog() {
-    const logDiv = elements.transactionLog;
-    if (transactions.length === 0) {
-        logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
-        return;
-    }
-    logDiv.innerHTML = transactions.map(t => `
-        <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
-    `).join('');
-}
-
-    function showTab(tab) {
-        if (isScannerRunning) stopScanner();
-    
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    
-        document.getElementById(tab + '-tab').classList.add('active');
-        document.getElementById('nav-' + tab).classList.add('active');
-    }
-    
     function closeModal() {
         document.getElementById('custom-modal').style.display = 'none';
     }
@@ -409,6 +369,206 @@ function renderTransactionLog() {
             onSubmit(value);
         };
     }
+
+     // ====================== STOCK FORM HELPERS ======================
+function clearStockForm() {
+    document.getElementById('stock-barcode').value = '';
+    document.getElementById('stock-name').value = '';
+    document.getElementById('stock-cost').value = '';
+    document.getElementById('stock-cat').value = 'Other';
+    document.getElementById('stock-custom-markup').value = '';
+    document.getElementById('stock-qty').value = '';
+    document.getElementById('stock-min-level').value = '5';
+    document.getElementById('stock-expiry').value = '';
+    document.getElementById('price-preview').style.display = 'none';
+    document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
+}
+
+function editItem(barcode) {
+    const normalized = normalizeBarcode(barcode);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (!item) {
+        showMessage("Item not found.");
+        return;
+    }
+
+    showTab('stock');
+    
+    document.getElementById('stock-barcode').value = item.barcode;
+    document.getElementById('stock-name').value = item.name || "";
+    document.getElementById('stock-cost').value = item.cost || "";
+    document.getElementById('stock-cat').value = item.category || "Other";
+    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+    document.getElementById('stock-qty').value = item.stockQty || 0;
+    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+    document.getElementById('stock-expiry').value = item.expiryDate || "";
+
+    updatePricePreview();
+    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+}
+
+function showStockInspector() {
+    let issues = [];
+
+    inventory.forEach(item => {
+        const normBarcode = normalizeBarcode(item.barcode);
+        
+        if (!item.name || item.name.trim() === "") 
+            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
+        
+        if (!item.cost || item.cost <= 0) 
+            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
+        
+        if (!item.category) 
+            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
+        
+        if (item.stockQty === 0) 
+            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
+        
+        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
+            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
+        
+        if (item.expiryDate) {
+            const expiry = new Date(item.expiryDate);
+            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
+            if (daysLeft < 0) 
+                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
+            else if (daysLeft <= 7) 
+                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
+        }
+    });
+
+    let html = `<h3>Stock Inspector</h3>`;
+    if (issues.length === 0) {
+        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
+    } else {
+        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
+        issues.forEach(issue => {
+            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
+                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
+                ${issue.type} — ${issue.name}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = "Stock Inspector";
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+    modal.style.display = 'flex';
+}
+
+async function saveStockToCloud() {
+    const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+    if (!sheetUrl) {
+        showMessage("Please set your Google Sheet URL in Settings first.");
+        return;
+    }
+
+    const data = {
+        barcode: normalizeBarcode(document.getElementById('stock-barcode').value),
+        name: document.getElementById('stock-name').value.trim(),
+        cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+        category: document.getElementById('stock-cat').value,
+        customMarkup: parseFloat(document.getElementById('stock-custom-markup').value) || 0,
+        stockQty: parseInt(document.getElementById('stock-qty').value) || 0,
+        minStockLevel: parseInt(document.getElementById('stock-min-level').value) || 5,
+        expiryDate: document.getElementById('stock-expiry').value || ""
+    };
+
+    if (!data.barcode || !data.name) {
+        showMessage("Barcode and Item Name are required.");
+        return;
+    }
+
+    const saveBtn = document.getElementById('save-stock-btn');
+    const statusEl = document.getElementById('stock-status');
+
+    saveBtn.disabled = true;
+    statusEl.textContent = "Saving...";
+
+    try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+            showMessage("✅ Item saved/updated successfully!");
+            const idx = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
+            if (idx !== -1) inventory[idx] = { ...inventory[idx], ...data };
+            else inventory.push(data);
+            saveInventoryToLocal();
+            clearStockForm();
+        } else {
+            showMessage("Save failed.");
+        }
+    } catch (e) {
+        showMessage("Connection error.");
+    } finally {
+        saveBtn.disabled = false;
+        statusEl.textContent = "";
+    }
+}
+    
+
+    
+
+    // ====================== INVENTORY LOAD/SAVE ======================
+function loadInventoryFromLocal() {
+    const saved = localStorage.getItem('tuckshop_inventory');
+    if (saved) {
+        inventory = JSON.parse(saved);
+        console.log(`Loaded ${inventory.length} items from local storage`);
+    } else {
+        console.log("No local inventory found yet");
+    }
+}
+
+function saveInventoryToLocal() {
+    localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
+}
+
+
+
+function loadDailySales() {
+    dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
+    updateDailyDisplay();
+}
+
+function loadStartingFloat() {
+    startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
+}
+
+function loadTransactions() {
+    const saved = localStorage.getItem('tuckshop_transactions');
+    if (saved) transactions = JSON.parse(saved);
+}
+
+function renderTransactionLog() {
+    const logDiv = elements.transactionLog;
+    if (transactions.length === 0) {
+        logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
+        return;
+    }
+    logDiv.innerHTML = transactions.map(t => `
+        <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
+    `).join('');
+}
+
+    
+    
+    
+
+    
+
+    
+
+    
 
     // ====================== CATEGORIES & MARKUPS ======================
     function manageCategoriesAndMarkups() {
@@ -1031,95 +1191,7 @@ function handleStockSearch(val) {
 }
 
 
-// ====================== STOCK FORM HELPERS ======================
-function clearStockForm() {
-    document.getElementById('stock-barcode').value = '';
-    document.getElementById('stock-name').value = '';
-    document.getElementById('stock-cost').value = '';
-    document.getElementById('stock-cat').value = 'Other';
-    document.getElementById('stock-custom-markup').value = '';
-    document.getElementById('stock-qty').value = '';
-    document.getElementById('stock-min-level').value = '5';
-    document.getElementById('stock-expiry').value = '';
-    document.getElementById('price-preview').style.display = 'none';
-    document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
-}
 
-function editItem(barcode) {
-    const normalized = normalizeBarcode(barcode);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (!item) {
-        showMessage("Item not found.");
-        return;
-    }
-
-    showTab('stock');
-    
-    document.getElementById('stock-barcode').value = item.barcode;
-    document.getElementById('stock-name').value = item.name || "";
-    document.getElementById('stock-cost').value = item.cost || "";
-    document.getElementById('stock-cat').value = item.category || "Other";
-    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-    document.getElementById('stock-qty').value = item.stockQty || 0;
-    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-    document.getElementById('stock-expiry').value = item.expiryDate || "";
-
-    updatePricePreview();
-    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-}
-
-function showStockInspector() {
-    let issues = [];
-
-    inventory.forEach(item => {
-        const normBarcode = normalizeBarcode(item.barcode);
-        
-        if (!item.name || item.name.trim() === "") 
-            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
-        
-        if (!item.cost || item.cost <= 0) 
-            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
-        
-        if (!item.category) 
-            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
-        
-        if (item.stockQty === 0) 
-            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
-        
-        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
-            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
-        
-        if (item.expiryDate) {
-            const expiry = new Date(item.expiryDate);
-            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
-            if (daysLeft < 0) 
-                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
-            else if (daysLeft <= 7) 
-                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
-        }
-    });
-
-    let html = `<h3>Stock Inspector</h3>`;
-    if (issues.length === 0) {
-        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
-    } else {
-        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
-        issues.forEach(issue => {
-            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
-                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
-                ${issue.type} — ${issue.name}
-            </li>`;
-        });
-        html += `</ul>`;
-    }
-
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Stock Inspector";
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-    modal.style.display = 'flex';
-}
 
     
 // New helper to properly select and hide results
