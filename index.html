@@ -254,11 +254,12 @@
 </div>
 
 <script>
-    // ====================== CONFIG ======================
+    // ====================== CONFIG & CONSTANTS ======================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
 
+    // ====================== GLOBAL STATE ======================
     let inventory = [];
     let cart = [];
     let transactions = [];
@@ -288,59 +289,55 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-// ====================== UTILITY FUNCTIONS ======================
-function normalizeBarcode(barcode) {
-    return String(barcode || "").trim().replace(/^0+/, '');
-}
+    // ====================== UTILITY FUNCTIONS ======================
+    function normalizeBarcode(barcode) {
+        return String(barcode || "").trim().replace(/^0+/, '');
+    }
 
-function showTab(tab) {
+    function showTab(tab) {
         if (isScannerRunning) stopScanner();
-    
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    
         document.getElementById(tab + '-tab').classList.add('active');
         document.getElementById('nav-' + tab).classList.add('active');
-}
-    
-function updateDailyDisplay() {
-    elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
-    elements.dailyItemsEl.textContent = dailyCount;
-}
-
-function checkDailyLimit() {
-    if (dailyCount >= DAILY_LIMIT) {
-        document.getElementById('scan-btn').disabled = true;
-        elements.manualSearch.disabled = true;
-    } else {
-        document.getElementById('scan-btn').disabled = false;
-        elements.manualSearch.disabled = false;
     }
-}
+
+    function updateDailyDisplay() {
+        elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
+        elements.dailyItemsEl.textContent = dailyCount;
+    }
+
+    function checkDailyLimit() {
+        if (dailyCount >= DAILY_LIMIT) {
+            const scanBtn = document.getElementById('scan-btn');
+            if (scanBtn) scanBtn.disabled = true;
+            if (elements.manualSearch) elements.manualSearch.disabled = true;
+        } else {
+            const scanBtn = document.getElementById('scan-btn');
+            if (scanBtn) scanBtn.disabled = false;
+            if (elements.manualSearch) elements.manualSearch.disabled = false;
+        }
+    }
 
     // ====================== MODAL SYSTEM ======================
-
     function closeModal() {
         document.getElementById('custom-modal').style.display = 'none';
     }
 
     function showMessage(message, callback = null) {
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Message";
-    document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-    
-    document.getElementById('modal-buttons').innerHTML = `
-        <button class="btn btn-save" id="message-ok-btn">OK</button>
-    `;
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Message";
+        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+        document.getElementById('modal-buttons').innerHTML = `
+            <button class="btn btn-save" id="message-ok-btn">OK</button>
+        `;
+        modal.style.display = 'flex';
 
-    modal.style.display = 'flex';
-
-    // Use proper event listener instead of inline string
-    document.getElementById('message-ok-btn').onclick = () => {
-        closeModal();
-        if (callback) callback();
-    };
-}
+        document.getElementById('message-ok-btn').onclick = () => {
+            closeModal();
+            if (callback) callback();
+        };
+    }
 
     function showConfirm(message, onYes) {
         const modal = document.getElementById('custom-modal');
@@ -378,205 +375,227 @@ function checkDailyLimit() {
         };
     }
 
-     // ====================== STOCK FORM HELPERS ======================
-function clearStockForm() {
-    document.getElementById('stock-barcode').value = '';
-    document.getElementById('stock-name').value = '';
-    document.getElementById('stock-cost').value = '';
-    document.getElementById('stock-cat').value = 'Other';
-    document.getElementById('stock-custom-markup').value = '';
-    document.getElementById('stock-qty').value = '';
-    document.getElementById('stock-min-level').value = '5';
-    document.getElementById('stock-expiry').value = '';
-    document.getElementById('price-preview').style.display = 'none';
-    document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
-}
-
-function editItem(barcode) {
-    const normalized = normalizeBarcode(barcode);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (!item) {
-        showMessage("Item not found.");
-        return;
-    }
-
-    showTab('stock');
-    
-    document.getElementById('stock-barcode').value = item.barcode;
-    document.getElementById('stock-name').value = item.name || "";
-    document.getElementById('stock-cost').value = item.cost || "";
-    document.getElementById('stock-cat').value = item.category || "Other";
-    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-    document.getElementById('stock-qty').value = item.stockQty || 0;
-    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-    document.getElementById('stock-expiry').value = item.expiryDate || "";
-
-    updatePricePreview();
-    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-}
-
-function showStockInspector() {
-    let issues = [];
-
-    inventory.forEach(item => {
-        const normBarcode = normalizeBarcode(item.barcode);
-        
-        if (!item.name || item.name.trim() === "") 
-            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
-        
-        if (!item.cost || item.cost <= 0) 
-            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
-        
-        if (!item.category) 
-            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
-        
-        if (item.stockQty === 0) 
-            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
-        
-        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
-            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
-        
-        if (item.expiryDate) {
-            const expiry = new Date(item.expiryDate);
-            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
-            if (daysLeft < 0) 
-                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
-            else if (daysLeft <= 7) 
-                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
+    // ====================== INVENTORY & DAILY ======================
+    function loadInventoryFromLocal() {
+        const saved = localStorage.getItem('tuckshop_inventory');
+        if (saved) {
+            inventory = JSON.parse(saved);
+            console.log(`Loaded ${inventory.length} items from local storage`);
         }
-    });
+    }
 
-    let html = `<h3>Stock Inspector</h3>`;
-    if (issues.length === 0) {
-        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
-    } else {
-        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
-        issues.forEach(issue => {
-            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
-                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
-                ${issue.type} — ${issue.name}
-            </li>`;
+    function saveInventoryToLocal() {
+        localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
+    }
+
+    function loadDailySales() {
+        dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
+        updateDailyDisplay();
+    }
+
+    function loadStartingFloat() {
+        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
+    }
+
+    function loadTransactions() {
+        const saved = localStorage.getItem('tuckshop_transactions');
+        if (saved) transactions = JSON.parse(saved);
+    }
+
+    function renderTransactionLog() {
+        const logDiv = elements.transactionLog;
+        if (transactions.length === 0) {
+            logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
+            return;
+        }
+        logDiv.innerHTML = transactions.map(t => `
+            <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
+        `).join('');
+    }
+
+    function incrementDailyCount() {
+        dailyCount = Math.min(dailyCount + 1, DAILY_LIMIT);
+        localStorage.setItem(todayKey, dailyCount);
+        updateDailyDisplay();
+        checkDailyLimit();
+    }
+
+    function decrementDailyCount() {
+        dailyCount = Math.max(0, dailyCount - 1);
+        localStorage.setItem(todayKey, dailyCount);
+        updateDailyDisplay();
+        checkDailyLimit();
+    }
+
+    function addToDailyTotal(amount) {
+        dailyTotal += amount;
+        localStorage.setItem(dailyTotalKey, dailyTotal);
+        updateDailyDisplay();
+    }
+
+    function resetDailySales() {
+        showConfirm("Reset today's sales and float?", () => {
+            dailyCount = 0;
+            dailyTotal = 0;
+            startingFloat = 0;
+            localStorage.setItem(todayKey, '0');
+            localStorage.setItem(dailyTotalKey, '0');
+            localStorage.setItem(floatKey, '0');
+            updateDailyDisplay();
+            showMessage("Daily reset complete.");
         });
-        html += `</ul>`;
     }
 
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Stock Inspector";
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-    modal.style.display = 'flex';
-}
-
-async function saveStockToCloud() {
-    const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-    if (!sheetUrl) {
-        showMessage("Please set your Google Sheet URL in Settings first.");
-        return;
+    // ====================== STOCK FUNCTIONS ======================
+    function clearStockForm() {
+        document.getElementById('stock-barcode').value = '';
+        document.getElementById('stock-name').value = '';
+        document.getElementById('stock-cost').value = '';
+        document.getElementById('stock-cat').value = 'Other';
+        document.getElementById('stock-custom-markup').value = '';
+        document.getElementById('stock-qty').value = '';
+        document.getElementById('stock-min-level').value = '5';
+        document.getElementById('stock-expiry').value = '';
+        document.getElementById('price-preview').style.display = 'none';
+        document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
     }
 
-    const data = {
-        barcode: normalizeBarcode(document.getElementById('stock-barcode').value),
-        name: document.getElementById('stock-name').value.trim(),
-        cost: parseFloat(document.getElementById('stock-cost').value) || 0,
-        category: document.getElementById('stock-cat').value,
-        customMarkup: parseFloat(document.getElementById('stock-custom-markup').value) || 0,
-        stockQty: parseInt(document.getElementById('stock-qty').value) || 0,
-        minStockLevel: parseInt(document.getElementById('stock-min-level').value) || 5,
-        expiryDate: document.getElementById('stock-expiry').value || ""
-    };
+    function editItem(barcode) {
+        const normalized = normalizeBarcode(barcode);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (!item) {
+            showMessage("Item not found.");
+            return;
+        }
 
-    if (!data.barcode || !data.name) {
-        showMessage("Barcode and Item Name are required.");
-        return;
+        showTab('stock');
+        
+        document.getElementById('stock-barcode').value = item.barcode;
+        document.getElementById('stock-name').value = item.name || "";
+        document.getElementById('stock-cost').value = item.cost || "";
+        document.getElementById('stock-cat').value = item.category || "Other";
+        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+        document.getElementById('stock-qty').value = item.stockQty || 0;
+        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+        document.getElementById('stock-expiry').value = item.expiryDate || "";
+
+        updatePricePreview();
+        document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
     }
 
-    const saveBtn = document.getElementById('save-stock-btn');
-    const statusEl = document.getElementById('stock-status');
+    function showStockInspector() {
+        let issues = [];
 
-    saveBtn.disabled = true;
-    statusEl.textContent = "Saving...";
-
-    try {
-        const res = await fetch(APPS_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
+        inventory.forEach(item => {
+            const normBarcode = normalizeBarcode(item.barcode);
+            if (!item.name || item.name.trim() === "") issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
+            if (!item.cost || item.cost <= 0) issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
+            if (!item.category) issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
+            if (item.stockQty === 0) issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
+            if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
+            
+            if (item.expiryDate) {
+                const expiry = new Date(item.expiryDate);
+                const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
+                if (daysLeft < 0) issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
+                else if (daysLeft <= 7) issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
+            }
         });
 
-        const result = await res.json();
-        if (result.success) {
-            showMessage("✅ Item saved/updated successfully!");
-            const idx = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
-            if (idx !== -1) inventory[idx] = { ...inventory[idx], ...data };
-            else inventory.push(data);
-            saveInventoryToLocal();
-            clearStockForm();
+        let html = `<h3>Stock Inspector</h3>`;
+        if (issues.length === 0) {
+            html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
         } else {
-            showMessage("Save failed.");
+            html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
+            issues.forEach(issue => {
+                html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
+                         style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
+                    ${issue.type} — ${issue.name}
+                </li>`;
+            });
+            html += `</ul>`;
         }
-    } catch (e) {
-        showMessage("Connection error.");
-    } finally {
-        saveBtn.disabled = false;
-        statusEl.textContent = "";
+
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Stock Inspector";
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+        modal.style.display = 'flex';
     }
-}
-    
 
-    
+    async function saveStockToCloud() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) {
+            showMessage("Please set your Google Sheet URL in Settings first.");
+            return;
+        }
 
-    // ====================== INVENTORY LOAD/SAVE ======================
-function loadInventoryFromLocal() {
-    const saved = localStorage.getItem('tuckshop_inventory');
-    if (saved) {
-        inventory = JSON.parse(saved);
-        console.log(`Loaded ${inventory.length} items from local storage`);
-    } else {
-        console.log("No local inventory found yet");
+        const data = {
+            barcode: normalizeBarcode(document.getElementById('stock-barcode').value),
+            name: document.getElementById('stock-name').value.trim(),
+            cost: parseFloat(document.getElementById('stock-cost').value) || 0,
+            category: document.getElementById('stock-cat').value,
+            customMarkup: parseFloat(document.getElementById('stock-custom-markup').value) || 0,
+            stockQty: parseInt(document.getElementById('stock-qty').value) || 0,
+            minStockLevel: parseInt(document.getElementById('stock-min-level').value) || 5,
+            expiryDate: document.getElementById('stock-expiry').value || ""
+        };
+
+        if (!data.barcode || !data.name) {
+            showMessage("Barcode and Item Name are required.");
+            return;
+        }
+
+        const saveBtn = document.getElementById('save-stock-btn');
+        const statusEl = document.getElementById('stock-status');
+
+        saveBtn.disabled = true;
+        statusEl.textContent = "Saving...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                showMessage("✅ Item saved/updated successfully!");
+                const idx = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
+                if (idx !== -1) inventory[idx] = { ...inventory[idx], ...data };
+                else inventory.push(data);
+                saveInventoryToLocal();
+                clearStockForm();
+            } else {
+                showMessage("Save failed.");
+            }
+        } catch (e) {
+            showMessage("Connection error.");
+        } finally {
+            saveBtn.disabled = false;
+            statusEl.textContent = "";
+        }
     }
-}
 
-function saveInventoryToLocal() {
-    localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
-}
+    function updatePricePreview() {
+        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
+        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
+        const category = document.getElementById('stock-cat').value || "Other";
+        const previewDiv = document.getElementById('price-preview');
 
+        if (cost <= 0) {
+            previewDiv.style.display = 'none';
+            return;
+        }
 
+        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
+        const selling = (cost * (1 + markup / 100)).toFixed(2);
 
-function loadDailySales() {
-    dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
-    updateDailyDisplay();
-}
-
-function loadStartingFloat() {
-    startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
-}
-
-function loadTransactions() {
-    const saved = localStorage.getItem('tuckshop_transactions');
-    if (saved) transactions = JSON.parse(saved);
-}
-
-function renderTransactionLog() {
-    const logDiv = elements.transactionLog;
-    if (transactions.length === 0) {
-        logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
-        return;
+        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
+            (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
+        previewDiv.style.display = 'block';
     }
-    logDiv.innerHTML = transactions.map(t => `
-        <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
-    `).join('');
-}
-
-    
-    
-    
-
-    
-
-    
-
-    
 
     // ====================== CATEGORIES & MARKUPS ======================
     function manageCategoriesAndMarkups() {
@@ -605,66 +624,9 @@ function renderTransactionLog() {
         modal.style.display = 'flex';
     }
 
-
-    // ====================== STOCK INSPECTOR ======================
-function showStockInspector() {
-    let issues = [];
-
-    inventory.forEach(item => {
-        const normBarcode = normalizeBarcode(item.barcode);
-        
-        if (!item.name || item.name.trim() === "") 
-            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
-        
-        if (!item.cost || item.cost <= 0) 
-            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
-        
-        if (!item.category) 
-            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
-        
-        if (item.stockQty === 0) 
-            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
-        
-        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
-            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
-        
-        if (item.expiryDate) {
-            const expiry = new Date(item.expiryDate);
-            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
-            if (daysLeft < 0) 
-                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
-            else if (daysLeft <= 7) 
-                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
-        }
-    });
-
-    let html = `<h3>Stock Inspector</h3>`;
-    if (issues.length === 0) {
-        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
-    } else {
-        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
-        issues.forEach(issue => {
-            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
-                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
-                ${issue.type} — ${issue.name}
-            </li>`;
-        });
-        html += `</ul>`;
-    }
-
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Stock Inspector";
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-    modal.style.display = 'flex';
-}
-
     function saveCategoryMarkup(cat, value) {
         localStorage.setItem('markup-' + cat, parseFloat(value) || 10);
-        // Update price preview if currently editing an item in this category
-        if (document.getElementById('stock-tab').classList.contains('active')) {
-            updatePricePreview();
-        }
+        updatePricePreview();
     }
 
     function addNewCategoryPrompt() {
@@ -676,16 +638,15 @@ function showStockInspector() {
         if (!name || categories.includes(name)) return;
 
         categories.push(name);
-        localStorage.setItem('markup-' + name, 10); // default 10%
+        localStorage.setItem('markup-' + name, 10);
         closeModal();
-        manageCategoriesAndMarkups(); // refresh modal
+        manageCategoriesAndMarkups();
         populateCategoryDropdown();
     }
 
     function removeCategory(catName) {
         if (catName === "Other") return;
         const affected = inventory.filter(i => i.category === catName).length;
-
         showConfirm(`Delete category "${catName}"?\n${affected} items will be moved to "Other".`, () => {
             inventory.forEach(item => {
                 if (item.category === catName) item.category = "Other";
@@ -716,52 +677,24 @@ function showStockInspector() {
         select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
-    // ====================== PRICE PREVIEW (updated) ======================
-    function updatePricePreview() {
-    const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-    const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
-    const category = document.getElementById('stock-cat').value || "Other";
-    const previewDiv = document.getElementById('price-preview');
-
-    if (cost <= 0) {
-        previewDiv.style.display = 'none';
-        return;
-    }
-
-    // Use custom markup if set, otherwise use category default
-    let markup = customMarkup > 0 ? customMarkup : 
-                 (parseFloat(localStorage.getItem('markup-' + category)) || 10);
-
-    const selling = (cost * (1 + markup / 100)).toFixed(2);
-
-    previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
-        (Markup: ${markup}% ${customMarkup > 0 ? '(Custom override)' : '(Category default)'})`;
-    previewDiv.style.display = 'block';
-}
     // ====================== SCANNER ======================
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') return showMessage("Daily limit reached.");
-
         if (typeof Quagga === 'undefined') return showMessage("Scanner not loaded.");
-
         if (currentMediaStream) {
             currentMediaStream.getTracks().forEach(t => t.stop());
             currentMediaStream = null;
         }
-
         currentScanMode = mode;
         lastDetectionTime = 0;
-
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
             });
             currentMediaStream = stream;
-
             document.getElementById('interactive').style.display = 'block';
             document.getElementById('stop-scan-btn').style.display = 'block';
             isScannerRunning = true;
-
             Quagga.init({
                 inputStream: {
                     name: "Live",
@@ -781,15 +714,12 @@ function showStockInspector() {
                 if (err) { showMessage("Scanner init failed"); stopScanner(); return; }
                 Quagga.start();
             });
-
             Quagga.onDetected((data) => {
                 const now = Date.now();
                 if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
                 lastDetectionTime = now;
-
                 const code = data.codeResult.code;
                 if (navigator.vibrate) navigator.vibrate(80);
-
                 if (currentScanMode === 'sale') {
                     addToCart(code);
                     elements.saleStatus.textContent = `Added: ${code}`;
@@ -819,11 +749,10 @@ function showStockInspector() {
     function handleSearch(val) {
         if (val.length < 2) { elements.searchResults.style.display = 'none'; return; }
         const lower = val.toLowerCase();
-        const filtered = inventory.filter(i => 
+        const filtered = inventory.filter(i =>
             (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalizeBarcode(val)
         );
-
-        elements.searchResults.innerHTML = filtered.length ? 
+        elements.searchResults.innerHTML = filtered.length ?
             filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
             `<div style="padding:12px;color:#888;">No matching items</div>`;
         elements.searchResults.style.display = 'block';
@@ -840,11 +769,9 @@ function showStockInspector() {
         const normalized = normalizeBarcode(barcodeStr);
         const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
         if (!item) return showMessage("Item not found.");
-
         const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
         if (existing) existing.qty++;
         else cart.push({ ...item, qty: 1, price: getPrice(item) });
-
         elements.manualSearch.value = '';
         elements.searchResults.style.display = 'none';
         renderCart();
@@ -879,135 +806,109 @@ function showStockInspector() {
     }
 
     function checkout() {
-    if (!cart.length) return;
+        if (!cart.length) return;
+        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
 
-    const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
+        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
+            if (cash < total) {
+                showMessage("Not enough cash received!");
+                return;
+            }
+            const change = cash - total;
 
-    showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
-        if (cash < total) {
-            showMessage("Not enough cash received!");
-            return;
-        }
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            transactions.unshift({
+                time: timeStr,
+                total: total.toFixed(2),
+                items: cart.length,
+                change: change.toFixed(2)
+            });
+            if (transactions.length > 5) transactions.pop();
+            localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
+            renderTransactionLog();
 
-        const change = cash - total;
+            addToDailyTotal(total);
 
-        // Log transaction
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        transactions.unshift({
-            time: timeStr,
-            total: total.toFixed(2),
-            items: cart.length,
-            change: change.toFixed(2)
-        });
-        if (transactions.length > 5) transactions.pop();
-        localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
-        renderTransactionLog();
-
-        addToDailyTotal(total);
-
-        // Fixed sale complete message
-        showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`, () => {
-            cart = [];
-            renderCart();
-        });
-    });
-}
-
-    // ====================== DAILY COUNTER ======================
-    function incrementDailyCount() {
-        dailyCount = Math.min(dailyCount + 1, DAILY_LIMIT);
-        localStorage.setItem(todayKey, dailyCount);
-        updateDailyDisplay();
-        checkDailyLimit();
-    }
-
-    function decrementDailyCount() {
-        dailyCount = Math.max(0, dailyCount - 1);
-        localStorage.setItem(todayKey, dailyCount);
-        updateDailyDisplay();
-        checkDailyLimit();
-    }
-
-    function checkDailyLimit() {
-        if (dailyCount >= DAILY_LIMIT) {
-            document.getElementById('scan-btn').disabled = true;
-            elements.manualSearch.disabled = true;
-        } else {
-            document.getElementById('scan-btn').disabled = false;
-            elements.manualSearch.disabled = false;
-        }
-    }
-
-    function loadDailySales() {
-        dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
-        updateDailyDisplay();
-    }
-
-    function updateDailyDisplay() {
-        elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
-        elements.dailyItemsEl.textContent = dailyCount;
-    }
-
-    function resetDailySales() {
-        showConfirm("Reset today's sales and float?", () => {
-            dailyCount = 0;
-            dailyTotal = 0;
-            startingFloat = 0;
-            localStorage.setItem(todayKey, '0');
-            localStorage.setItem(dailyTotalKey, '0');
-            localStorage.setItem(floatKey, '0');
-            updateDailyDisplay();
-            showMessage("Daily reset complete.");
-        });
-    }
-
-    function addToDailyTotal(amount) {
-        dailyTotal += amount;
-        localStorage.setItem(dailyTotalKey, dailyTotal);
-        updateDailyDisplay();
-    }
-
-    function loadStartingFloat() {
-        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
-    }
-
-    // ====================== CASH UP ======================
-    function showCashUp() {
-        const expectedSales = dailyTotal;
-        const expectedCash = startingFloat + expectedSales;
-
-        showPrompt(`Cash Up\nExpected: R${expectedCash.toFixed(2)}\nCash in drawer:`, expectedCash.toFixed(2), (cashCounted) => {
-            showPrompt("Card payments total:", "0", (cardTotal) => {
-                const actual = cashCounted + cardTotal;
-                const variance = actual - expectedCash;
-
-                let msg = `CASH UP SUMMARY\n\n`;
-                msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
-                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
-                msg += `Expected Cash:  R${expectedCash.toFixed(2)}\n`;
-                msg += `Actual:         R${actual.toFixed(2)}\n`;
-                msg += `Variance:       R${variance.toFixed(2)}\n\n`;
-                if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
-                else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
-                else msg += `✅ Perfect match!`;
-
-                showMessage(msg, () => {
-                    showPrompt("Starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
-                        startingFloat = newFloat;
-                        localStorage.setItem(floatKey, startingFloat);
-                    });
-                });
+            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
+                cart = [];
+                renderCart();
             });
         });
     }
 
-    // ====================== SETTINGS & SYNC ======================
-    function createNewSheet() {
-        showConfirm("Open new Google Sheet?\nSet sharing to 'Anyone with the link - Editor' after it opens.", () => {
-            document.getElementById('sale-status').textContent = "Opening new sheet...";
-            window.open("https://docs.google.com/spreadsheets/create", "_blank");
+    // ====================== WINDOW ONLOAD ======================
+    window.onload = () => {
+        loadSettings();
+        loadInventoryFromLocal();
+        loadDailySales();
+        loadStartingFloat();
+        loadTransactions();
+        renderCart();
+        renderTransactionLog();
+        
+        dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
+        updateDailyDisplay();
+        checkDailyLimit();
+        
+        populateCategoryDropdown();
+        
+        categories.forEach(cat => {
+            if (!localStorage.getItem('markup-' + cat)) {
+                const defaultVal = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
+                localStorage.setItem('markup-' + cat, defaultVal);
+            }
         });
+    };
+
+    // ====================== AUTO-FILL & SEARCH ======================
+    function autoFillFromBarcode(inputValue) {
+        if (inputValue.length < 3) return;
+        const normalized = normalizeBarcode(inputValue);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        
+        if (item) {
+            document.getElementById('stock-name').value = item.name || "";
+            document.getElementById('stock-cost').value = item.cost || "";
+            document.getElementById('stock-cat').value = item.category || "Other";
+            document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+            document.getElementById('stock-qty').value = item.stockQty || 0;
+            document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+            document.getElementById('stock-expiry').value = item.expiryDate || "";
+            updatePricePreview();
+            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+        } else {
+            clearStockForm();
+            document.getElementById('stock-barcode').value = inputValue;
+            document.getElementById('stock-status').textContent = "New item - fill details";
+        }
+    }
+
+    function handleStockSearch(val) {
+        const resultsDiv = document.getElementById('stock-search-results');
+        if (val.length < 2) {
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        const lower = val.toLowerCase();
+        const normalized = normalizeBarcode(val);
+        const filtered = inventory.filter(i =>
+            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
+        );
+        resultsDiv.innerHTML = filtered.map(i =>
+            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
+        ).join('');
+        resultsDiv.style.display = filtered.length ? 'block' : 'none';
+    }
+
+    function selectStockItem(barcode) {
+        editItem(barcode);
+        document.getElementById('stock-search-results').style.display = 'none';
+    }
+
+    // ====================== SETTINGS & SYNC ======================
+    function loadSettings() {
+        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
     }
 
     function saveUserSheetURL() {
@@ -1020,86 +921,88 @@ function showStockInspector() {
         }
     }
 
-    function loadSettings() {
-        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
-    }
+    async function fetchInventoryFromSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first.");
 
-    function loadMarkups() {
-    // No longer needed for the old Settings inputs
-    // We now handle per-category markups inside manageCategoriesAndMarkups()
-    // This function can stay empty or be removed later
-    console.log("Markups loaded via category management");
-}
-
-    function saveMarkups() {
-        localStorage.setItem('markup-Snacks', document.getElementById('markup-Snacks').value);
-        localStorage.setItem('markup-Drinks', document.getElementById('markup-Drinks').value);
-        localStorage.setItem('markup-Other', document.getElementById('markup-Other').value);
-        showMessage("Default markups saved.");
-        renderCart();
-    }
-
-    async function importMasterProducts() {
-    const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-    if (!sheetUrl) {
-        showMessage("Please enter your Google Sheet URL first.");
-        return;
-    }
-
-    showConfirm("Import from Master Database?\n\nCost prices will be set to 0.", async () => {
-        const statusEl = document.getElementById('sale-status');
-        statusEl.textContent = "Importing from Master Database...";
+        elements.saleStatus.textContent = "Loading from sheet...";
 
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+                body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
             });
 
-            if (!res.ok) throw new Error("Failed to connect to server");
-
-            const masterItems = await res.json();
-
-            if (!Array.isArray(masterItems) || masterItems.length === 0) {
-                showMessage("Master database returned no items.");
-                return;
-            }
-
-            let imported = 0;
-            const existing = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
-
-            for (const m of masterItems) {
-                const norm = normalizeBarcode(m.barcode);
-                if (!norm || existing.has(norm)) continue;
-
-                const newItem = {
-                    barcode: norm,
-                    name: String(m.name || ""),
-                    cost: 0,
-                    category: String(m.category || "Other"),
-                    customMarkup: 0,
-                    stockQty: 0,
-                    minStockLevel: 5,
-                    expiryDate: ""
-                };
-
-                await saveSingleItemToSheet(newItem);
-                inventory.push(newItem);
-                existing.add(norm);
-                imported++;
-            }
+            const data = await res.json();
+            inventory = data.map(row => ({
+                barcode: normalizeBarcode(row.Barcode || row.barcode),
+                name: String(row.Name || row.name || ""),
+                cost: parseFloat(row.Cost || row.cost || 0),
+                category: String(row.Category || row.category || "Other"),
+                customMarkup: parseFloat(row.CustomMarkup || 0),
+                stockQty: parseInt(row.StockQty || 0),
+                minStockLevel: parseInt(row.MinStockLevel || 5),
+                expiryDate: row.ExpiryDate || ""
+            })).filter(item => item.barcode);
 
             saveInventoryToLocal();
-            statusEl.textContent = `✅ Imported ${imported} products`;
-            showMessage(`Successfully imported ${imported} products.\n\nNote: Cost prices are 0. Please update them in the Stock tab.`);
-
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
+            populateCategoryDropdown();
         } catch (e) {
-            console.error(e);
-            showMessage("Import failed: " + e.message);
+            elements.saleStatus.textContent = "❌ Failed to load from sheet";
         }
-    });
-}
+    }
+
+    async function importMasterProducts() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first.");
+
+        showConfirm("Import from Master Database?\n\nCost prices will be set to 0.", async () => {
+            const statusEl = document.getElementById('sale-status');
+            statusEl.textContent = "Importing from Master Database...";
+
+            try {
+                const res = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+                });
+
+                const masterItems = await res.json();
+
+                let imported = 0;
+                const existing = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
+
+                for (const m of masterItems) {
+                    const norm = normalizeBarcode(m.barcode);
+                    if (!norm || existing.has(norm)) continue;
+
+                    const newItem = {
+                        barcode: norm,
+                        name: String(m.name || ""),
+                        cost: 0,
+                        category: String(m.category || "Other"),
+                        customMarkup: 0,
+                        stockQty: 0,
+                        minStockLevel: 5,
+                        expiryDate: ""
+                    };
+
+                    await saveSingleItemToSheet(newItem);
+                    inventory.push(newItem);
+                    existing.add(norm);
+                    imported++;
+                }
+
+                saveInventoryToLocal();
+                statusEl.textContent = `✅ Imported ${imported} products`;
+                showMessage(`Successfully imported ${imported} products.\n\nNote: Cost prices are 0. Please update them in the Stock tab.`);
+            } catch (e) {
+                showMessage("Import failed: " + e.message);
+            }
+        });
+    }
 
     async function saveSingleItemToSheet(item) {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
@@ -1113,145 +1016,135 @@ function showStockInspector() {
         } catch (e) {}
     }
 
-    function loadTransactions() {
-        const saved = localStorage.getItem('tuckshop_transactions');
-        if (saved) transactions = JSON.parse(saved);
+    function createNewSheet() {
+        showConfirm("Open new Google Sheet?\nSet sharing to 'Anyone with the link - Editor' after it opens.", () => {
+            document.getElementById('sale-status').textContent = "Opening new sheet...";
+            window.open("https://docs.google.com/spreadsheets/create", "_blank");
+        });
     }
 
-    function renderTransactionLog() {
-        const logDiv = elements.transactionLog;
-        if (transactions.length === 0) {
-            logDiv.innerHTML = "<em>No sales recorded yet.</em>";
-            return;
+    // ====================== SCANNER ======================
+    async function startScanner(mode) {
+        if (dailyCount >= DAILY_LIMIT && mode === 'sale') return showMessage("Daily limit reached.");
+        if (typeof Quagga === 'undefined') return showMessage("Scanner not loaded.");
+        if (currentMediaStream) {
+            currentMediaStream.getTracks().forEach(t => t.stop());
+            currentMediaStream = null;
         }
-        logDiv.innerHTML = transactions.map(t => `
-            <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
-        `).join('');
-    }
-
-    // ====================== WINDOW ONLOAD ======================
-window.onload = () => {
-    loadSettings();
-    loadInventoryFromLocal();
-    loadDailySales();
-    loadStartingFloat();
-    loadTransactions();
-    renderCart();
-    renderTransactionLog();
-    
-    dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
-    updateDailyDisplay();
-    checkDailyLimit();
-    
-    populateCategoryDropdown();
-    
-    // Initialize default markups if missing
-    categories.forEach(cat => {
-        if (!localStorage.getItem('markup-' + cat)) {
-            const defaultVal = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
-            localStorage.setItem('markup-' + cat, defaultVal);
+        currentScanMode = mode;
+        lastDetectionTime = 0;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
+            });
+            currentMediaStream = stream;
+            document.getElementById('interactive').style.display = 'block';
+            document.getElementById('stop-scan-btn').style.display = 'block';
+            isScannerRunning = true;
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.getElementById('interactive'),
+                    constraints: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
+                },
+                locator: { patchSize: "medium", halfSample: true },
+                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
+                frequency: 15,
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
+                    multiple: false
+                },
+                locate: true
+            }, (err) => {
+                if (err) { showMessage("Scanner init failed"); stopScanner(); return; }
+                Quagga.start();
+            });
+            Quagga.onDetected((data) => {
+                const now = Date.now();
+                if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
+                lastDetectionTime = now;
+                const code = data.codeResult.code;
+                if (navigator.vibrate) navigator.vibrate(80);
+                if (currentScanMode === 'sale') {
+                    addToCart(code);
+                    elements.saleStatus.textContent = `Added: ${code}`;
+                    setTimeout(stopScanner, 400);
+                    incrementDailyCount();
+                } else {
+                    document.getElementById('stock-barcode').value = code;
+                    autoFillFromBarcode(code);
+                    stopScanner();
+                }
+            });
+        } catch (e) {
+            showMessage(`Camera error: ${e.name}`);
+            stopScanner();
         }
-    });
-};
-    
-// ====================== AUTO-FILL & SEARCH (Updated) ======================
-function autoFillFromBarcode(inputValue) {
-    if (inputValue.length < 3) return;
-    const normalized = normalizeBarcode(inputValue);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (item) {
-        document.getElementById('stock-name').value = item.name || "";
-        document.getElementById('stock-cost').value = item.cost || "";
-        document.getElementById('stock-cat').value = item.category || "Other";
-        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-        document.getElementById('stock-qty').value = item.stockQty || 0;
-        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-        document.getElementById('stock-expiry').value = item.expiryDate || "";
-        
-        updatePricePreview();
-        document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-    } else {
-        clearStockForm();
-        document.getElementById('stock-barcode').value = inputValue;
-        document.getElementById('stock-status').textContent = "New item - fill details";
-    }
-}
-
-function handleStockSearch(val) {
-    const resultsDiv = document.getElementById('stock-search-results');
-    if (val.length < 2) { 
-        resultsDiv.style.display = 'none'; 
-        return; 
     }
 
-    const lower = val.toLowerCase();
-    const normalized = normalizeBarcode(val);
-    const filtered = inventory.filter(i => 
-        (i.name || '').toLowerCase().includes(lower) || 
-        normalizeBarcode(i.barcode) === normalized
-    );
-
-    resultsDiv.innerHTML = filtered.map(i => 
-        `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
-    ).join('');
-
-    resultsDiv.style.display = filtered.length ? 'block' : 'none';
-}
-
-
-
-
-    
-// New helper to properly select and hide results
-function selectStockItem(barcode) {
-    const normalized = normalizeBarcode(barcode);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (item) {
-        editItem(barcode);   // Reuse editItem to load the form
-    }
-    
-    // Hide the search results
-    document.getElementById('stock-search-results').style.display = 'none';
-}
-
-// ====================== EDIT ITEM FROM SEARCH ======================
-function editItem(barcode) {
-    const normalized = normalizeBarcode(barcode);
-    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-    
-    if (!item) {
-        showMessage("Item not found.");
-        return;
+    function stopScanner() {
+        if (Quagga && isScannerRunning) Quagga.stop();
+        if (currentMediaStream) currentMediaStream.getTracks().forEach(t => t.stop());
+        document.getElementById('interactive').style.display = 'none';
+        document.getElementById('stop-scan-btn').style.display = 'none';
+        isScannerRunning = false;
     }
 
-    // Switch to Stock tab and fill the form
-    showTab('stock');
-    
-    document.getElementById('stock-barcode').value = item.barcode;
-    document.getElementById('stock-name').value = item.name || "";
-    document.getElementById('stock-cost').value = item.cost || "";
-    document.getElementById('stock-cat').value = item.category || "Other";
-    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-    document.getElementById('stock-qty').value = item.stockQty || 0;
-    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-    document.getElementById('stock-expiry').value = item.expiryDate || "";
-
-    updatePricePreview();
-    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-}
-
-// Prevent closing search results when clicking inside
-// Better click-outside handler
-document.addEventListener('click', (e) => {
-    const resultsDiv = document.getElementById('stock-search-results');
-    if (resultsDiv && 
-        !e.target.closest('#stock-barcode') && 
-        !e.target.closest('#stock-search-results')) {
-        resultsDiv.style.display = 'none';
+    // ====================== SALE FUNCTIONS (continued) ======================
+    function addToCart(barcodeStr) {
+        if (dailyCount >= DAILY_LIMIT) return showMessage("Daily limit reached.");
+        const normalized = normalizeBarcode(barcodeStr);
+        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+        if (!item) return showMessage("Item not found.");
+        const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
+        if (existing) existing.qty++;
+        else cart.push({ ...item, qty: 1, price: getPrice(item) });
+        elements.manualSearch.value = '';
+        elements.searchResults.style.display = 'none';
+        renderCart();
+        incrementDailyCount();
     }
-});
+
+    function removeFromCart(idx) {
+        if (idx < 0 || idx >= cart.length) return;
+        cart.splice(idx, 1);
+        renderCart();
+        decrementDailyCount();
+    }
+
+    function getPrice(item) {
+        const cat = item.category || 'Other';
+        const markup = item.customMarkup > 0 ? item.customMarkup : (parseFloat(localStorage.getItem('markup-' + cat)) || 20);
+        return (Number(item.cost || 0) * (1 + markup / 100)).toFixed(2);
+    }
+
+    // ====================== CASH UP ======================
+    function showCashUp() {
+        const expectedSales = dailyTotal;
+        const expectedCash = startingFloat + expectedSales;
+        showPrompt(`Cash Up\nExpected: R${expectedCash.toFixed(2)}\nCash in drawer:`, expectedCash.toFixed(2), (cashCounted) => {
+            showPrompt("Card payments total:", "0", (cardTotal) => {
+                const actual = cashCounted + cardTotal;
+                const variance = actual - expectedCash;
+                let msg = `CASH UP SUMMARY\n\n`;
+                msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
+                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
+                msg += `Expected Cash:  R${expectedCash.toFixed(2)}\n`;
+                msg += `Actual:         R${actual.toFixed(2)}\n`;
+                msg += `Variance:       R${variance.toFixed(2)}\n\n`;
+                if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
+                else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
+                else msg += `✅ Perfect match!`;
+                showMessage(msg, () => {
+                    showPrompt("Starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
+                        startingFloat = newFloat;
+                        localStorage.setItem(floatKey, startingFloat);
+                    });
+                });
+            });
+        });
+    }
 </script>
 </body>
 </html>
