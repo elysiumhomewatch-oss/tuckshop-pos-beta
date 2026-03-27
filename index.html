@@ -860,18 +860,18 @@
         });
     }
 
-    function checkout() {
+        async function checkout() {
         if (!cart.length) return;
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
 
-        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
+        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), async (cash) => {
             if (cash < total) {
                 showMessage("Not enough cash received!");
                 return;
             }
             const change = cash - total;
 
-            // Deduct stock quantity for each sold item
+            // === DEDUCT STOCK QUANTITY LOCALLY ===
             cart.forEach(cartItem => {
                 const item = inventory.find(i => normalizeBarcode(i.barcode) === normalizeBarcode(cartItem.barcode));
                 if (item) {
@@ -894,10 +894,37 @@
 
             addToDailyTotal(total);
 
+            // === SAVE LOCALLY ===
+            saveInventoryToLocal();
+
+            // === NEW: SYNC UPDATED STOCK TO GOOGLE SHEET ===
+            const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+            if (sheetUrl) {
+                elements.saleStatus.textContent = "Updating stock levels in sheet...";
+                try {
+                    for (const item of inventory) {
+                        await fetch(APPS_SCRIPT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ 
+                                action: "addStock", 
+                                data: item, 
+                                sheetUrl: sheetUrl 
+                            })
+                        });
+                    }
+                    elements.saleStatus.textContent = "✅ Stock updated in sheet";
+                } catch (e) {
+                    console.error("Sheet sync failed:", e);
+                    elements.saleStatus.textContent = "⚠️ Stock updated locally only";
+                }
+            } else {
+                elements.saleStatus.textContent = "✅ Sale complete (local only)";
+            }
+
             showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
                 cart = [];
                 renderCart();
-                saveInventoryToLocal();   // Save updated stock quantities
             });
         });
     }
