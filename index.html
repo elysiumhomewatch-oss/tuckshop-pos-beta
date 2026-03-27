@@ -3,17 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- PWA Theme -->
     <meta name="theme-color" content="#2563eb">
-    <title>Tuckshop POS Beta</title>
-    <link rel="icon" href="data:,">
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-
-    <!-- iOS Support -->
+    
+    <!-- Modern Mobile Web App Capable (fixes the deprecation warning) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Keep for better iOS Safari support (even if partially deprecated) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Tuckshop POS">
+
+    <title>Tuckshop POS Beta</title>
+    <link rel="icon" href="data:,">
+    <link rel="manifest" href="manifest.json">
 
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
     <style>
@@ -1215,59 +1219,71 @@ if (sheetUrl && cart.length) {
         });
     };
 
- // ====================== PWA INSTALL & FULL-SCREEN ======================
+// ====================== PWA INSTALL & FULL-SCREEN SUPPORT ======================
 let deferredPrompt = null;
+
 const installBanner = document.getElementById('install-banner');
 const installBtn = document.getElementById('install-btn');
 
-// Show install banner if not in standalone mode
-function checkInstallStatus() {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+// Check if already running in standalone / full-screen mode
+function checkDisplayMode() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                          window.navigator.standalone === true;
     
-    if (!isStandalone) {
-        installBanner.style.display = 'block';
+    if (isStandalone) {
+        if (installBanner) installBanner.style.display = 'none';
     } else {
-        installBanner.style.display = 'none';
+        if (installBanner) installBanner.style.display = 'block';
     }
 }
 
-// Handle Install Prompt
+// Capture the install prompt
 window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
+    console.log('✅ beforeinstallprompt event fired - showing custom banner');
+    e.preventDefault();           // Prevent default browser banner
     deferredPrompt = e;
-    installBanner.style.display = 'block';
+    if (installBanner) installBanner.style.display = 'block';
 });
 
+// Handle Install Button Click
 if (installBtn) {
     installBtn.addEventListener('click', async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to install prompt: ${outcome}`);
-            deferredPrompt = null;
-            installBanner.style.display = 'none';
-        } else {
-            // Fallback for browsers that don't support beforeinstallprompt
-            alert("To install:\n\n1. Tap the browser menu (⋮)\n2. Choose 'Add to home screen' or 'Install app'");
+        if (!deferredPrompt) {
+            // Fallback instructions for browsers that don't support prompt (e.g. iOS Safari)
+            alert("To install Tuckshop POS:\n\n" +
+                  "• On Android/Chrome: Tap the menu (⋮) → 'Install app'\n" +
+                  "• On iPhone/Safari: Tap Share → 'Add to Home Screen'");
+            return;
         }
+
+        installBtn.disabled = true;
+        installBtn.textContent = "Installing...";
+
+        const result = await deferredPrompt.prompt();
+        console.log('User install choice:', result.outcome);
+
+        deferredPrompt = null;
+        if (installBanner) installBanner.style.display = 'none';
+        
+        installBtn.disabled = false;
+        installBtn.textContent = "Add to Home Screen";
     });
 }
 
-// Listen for changes (e.g. user installs or closes)
+// App installed successfully
 window.addEventListener('appinstalled', () => {
-    installBanner.style.display = 'none';
-    console.log('Tuckshop POS installed successfully!');
+    console.log('🎉 Tuckshop POS installed successfully!');
+    if (installBanner) installBanner.style.display = 'none';
+    deferredPrompt = null;
 });
 
-// Initial check
+// Initial check when page loads
 window.addEventListener('load', () => {
-    checkInstallStatus();
+    checkDisplayMode();
     
-    // Re-check when display mode changes
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkInstallStatus);
-});  
-
+    // Re-check if user changes display mode (e.g. installs)
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkDisplayMode);
+});
 </script>
 </body>
 </html>
