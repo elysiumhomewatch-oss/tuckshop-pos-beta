@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563eb">
     <title>Tuckshop POS Beta</title>
     <link rel="icon" href="data:,">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Tuckshop POS">
+
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.12.1/dist/quagga.min.js"></script>
     <style>
         :root { 
@@ -129,6 +139,27 @@
         }
         .modal-buttons .btn-cancel { background: #e2e8f0; color: #334155; }
         .modal-buttons .btn-confirm { background: var(--primary); color: white; }
+
+        #install-banner {
+            background: #fef3c7;
+            color: #854d0e;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 12px 0;
+            text-align: center;
+            display: none;
+            font-weight: 600;
+        }
+        #install-btn {
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
