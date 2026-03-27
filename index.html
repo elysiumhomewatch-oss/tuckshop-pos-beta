@@ -860,18 +860,23 @@
         });
     }
 
-        async function checkout() {
+            async function checkout() {
         if (!cart.length) return;
+
+        const completeBtn = document.querySelector('#sale-tab .btn-save'); // "Complete Sale" button
+        if (completeBtn) completeBtn.disabled = true;
+
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
 
         showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), async (cash) => {
             if (cash < total) {
                 showMessage("Not enough cash received!");
+                if (completeBtn) completeBtn.disabled = false;
                 return;
             }
             const change = cash - total;
 
-            // === DEDUCT STOCK QUANTITY LOCALLY ===
+            // Deduct stock quantity locally
             cart.forEach(cartItem => {
                 const item = inventory.find(i => normalizeBarcode(i.barcode) === normalizeBarcode(cartItem.barcode));
                 if (item) {
@@ -893,14 +898,15 @@
             renderTransactionLog();
 
             addToDailyTotal(total);
-
-            // === SAVE LOCALLY ===
             saveInventoryToLocal();
 
-            // === NEW: SYNC UPDATED STOCK TO GOOGLE SHEET ===
+            // Sync to sheet with loading state
             const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+            const statusEl = elements.saleStatus;
+
             if (sheetUrl) {
-                elements.saleStatus.textContent = "Updating stock levels in sheet...";
+                statusEl.textContent = "Updating stock in sheet... (please wait)";
+
                 try {
                     for (const item of inventory) {
                         await fetch(APPS_SCRIPT_URL, {
@@ -913,18 +919,19 @@
                             })
                         });
                     }
-                    elements.saleStatus.textContent = "✅ Stock updated in sheet";
+                    statusEl.textContent = "✅ Stock updated in sheet";
                 } catch (e) {
                     console.error("Sheet sync failed:", e);
-                    elements.saleStatus.textContent = "⚠️ Stock updated locally only";
+                    statusEl.textContent = "⚠️ Stock updated locally only (sheet sync failed)";
                 }
             } else {
-                elements.saleStatus.textContent = "✅ Sale complete (local only)";
+                statusEl.textContent = "✅ Sale complete (local only)";
             }
 
             showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
                 cart = [];
                 renderCart();
+                if (completeBtn) completeBtn.disabled = false;
             });
         });
     }
