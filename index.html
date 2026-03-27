@@ -474,9 +474,10 @@ function showStockInspector() {
     if (issues.length === 0) {
         html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
     } else {
-        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px;">`;
+        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
         issues.forEach(issue => {
-            html += `<li onclick="editItem('${issue.barcode}')" style="cursor:pointer; padding:6px 0; color:var(--warning);">
+            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
+                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
                 ${issue.type} — ${issue.name}
             </li>`;
         });
@@ -1023,10 +1024,23 @@ function handleStockSearch(val) {
     );
 
     resultsDiv.innerHTML = filtered.map(i => 
-        `<div class="search-row" onclick="editItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
+        `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
     ).join('');
 
     resultsDiv.style.display = filtered.length ? 'block' : 'none';
+}
+
+// New helper to properly select and hide results
+function selectStockItem(barcode) {
+    const normalized = normalizeBarcode(barcode);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (item) {
+        editItem(barcode);   // Reuse editItem to load the form
+    }
+    
+    // Hide the search results
+    document.getElementById('stock-search-results').style.display = 'none';
 }
 
 // ====================== EDIT ITEM FROM SEARCH ======================
@@ -1056,9 +1070,12 @@ function editItem(barcode) {
 }
 
 // Prevent closing search results when clicking inside
+// Better click-outside handler
 document.addEventListener('click', (e) => {
     const resultsDiv = document.getElementById('stock-search-results');
-    if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
+    if (resultsDiv && 
+        !e.target.closest('#stock-barcode') && 
+        !e.target.closest('#stock-search-results')) {
         resultsDiv.style.display = 'none';
     }
 });
