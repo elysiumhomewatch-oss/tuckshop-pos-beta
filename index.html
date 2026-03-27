@@ -312,16 +312,25 @@
         modal.style.display = 'flex';
     }
 
-    function showConfirm(message, onConfirm) {
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Confirm";
-        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-        document.getElementById('modal-buttons').innerHTML = `
-            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-save" onclick="closeModal(); setTimeout(() => {${onConfirm.toString().replace(/function\s*\(\)\s*\{|\}$/g, '')}}, 10);">Yes</button>
-        `;
-        modal.style.display = 'flex';
-    }
+    // New improved showConfirm
+function showConfirm(message, onYes) {
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = "Confirm";
+    document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+    
+    document.getElementById('modal-buttons').innerHTML = `
+        <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-save" id="confirm-yes-btn">Yes</button>
+    `;
+
+    modal.style.display = 'flex';
+
+    // Clean event listener instead of huge inline string
+    document.getElementById('confirm-yes-btn').onclick = () => {
+        closeModal();
+        onYes();
+    };
+}
 
     function closeModal() {
         document.getElementById('custom-modal').style.display = 'none';
@@ -862,47 +871,66 @@
     }
 
     async function importMasterProducts() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return showMessage("Please set your Sheet URL first.");
-
-        showConfirm("Import from Master Database?\nCost prices will be 0.", async () => {
-            try {
-                const res = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
-                });
-                const masterItems = await res.json();
-
-                let imported = 0;
-                const existing = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
-
-                for (const m of masterItems) {
-                    const norm = normalizeBarcode(m.barcode);
-                    if (!norm || existing.has(norm)) continue;
-                    const newItem = {
-                        barcode: norm,
-                        name: m.name || "",
-                        cost: 0,
-                        category: m.category || "Other",
-                        customMarkup: 0,
-                        stockQty: 0,
-                        minStockLevel: 5,
-                        expiryDate: ""
-                    };
-                    await saveSingleItemToSheet(newItem);
-                    inventory.push(newItem);
-                    existing.add(norm);
-                    imported++;
-                }
-
-                saveInventoryToLocal();
-                showMessage(`Imported ${imported} products.`);
-            } catch (e) {
-                showMessage("Import failed.");
-            }
-        });
+    const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+    if (!sheetUrl) {
+        showMessage("Please enter your Google Sheet URL first.");
+        return;
     }
+
+    showConfirm("Import from Master Database?\n\nCost prices will be set to 0.", async () => {
+        const statusEl = document.getElementById('sale-status');
+        statusEl.textContent = "Importing from Master Database...";
+
+        try {
+            const res = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
+            });
+
+            if (!res.ok) throw new Error("Failed to connect to server");
+
+            const masterItems = await res.json();
+
+            if (!Array.isArray(masterItems) || masterItems.length === 0) {
+                showMessage("Master database returned no items.");
+                return;
+            }
+
+            let imported = 0;
+            const existing = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
+
+            for (const m of masterItems) {
+                const norm = normalizeBarcode(m.barcode);
+                if (!norm || existing.has(norm)) continue;
+
+                const newItem = {
+                    barcode: norm,
+                    name: String(m.name || ""),
+                    cost: 0,
+                    category: String(m.category || "Other"),
+                    customMarkup: 0,
+                    stockQty: 0,
+                    minStockLevel: 5,
+                    expiryDate: ""
+                };
+
+                await saveSingleItemToSheet(newItem);
+                inventory.push(newItem);
+                existing.add(norm);
+                imported++;
+            }
+
+            saveInventoryToLocal();
+            statusEl.textContent = `✅ Imported ${imported} products`;
+            showMessage(`Successfully imported ${imported} products.\n\nNote: Cost prices are 0. Please update them in the Stock tab.`);
+
+        } catch (e) {
+            console.error(e);
+            showMessage("Import failed: " + e.message);
+        }
+    });
+}
 
     async function saveSingleItemToSheet(item) {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
