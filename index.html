@@ -97,7 +97,6 @@
             padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
         }
 
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -135,7 +134,7 @@
 <body>
 
 <div class="container">
-    <div class="beta-banner">🔬 BETA TESTING VERSION 0.9 - Persistent Categories</div>
+    <div class="beta-banner">🔬 BETA TESTING VERSION 0.9 - Persistent Categories + Stock Deduction</div>
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
     <div class="watermark">Made for Spaza & Tuckshops</div>
 
@@ -489,7 +488,7 @@
                 })
             });
         } catch (e) {
-            console.error("Failed to save categories to sheet");
+            console.error("Failed to save categories");
         }
     }
 
@@ -872,6 +871,15 @@
             }
             const change = cash - total;
 
+            // Deduct stock quantity for each sold item
+            cart.forEach(cartItem => {
+                const item = inventory.find(i => normalizeBarcode(i.barcode) === normalizeBarcode(cartItem.barcode));
+                if (item) {
+                    item.stockQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
+                }
+            });
+
+            // Log transaction
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             transactions.unshift({
@@ -889,6 +897,7 @@
             showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
                 cart = [];
                 renderCart();
+                saveInventoryToLocal();   // Save updated stock quantities
             });
         });
     }
@@ -970,7 +979,7 @@
             saveInventoryToLocal();
             elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
             populateCategoryDropdown();
-            loadCategoriesFromSheet();   // Also load categories
+            loadCategoriesFromSheet();   // Load categories too
         } catch (e) {
             elements.saleStatus.textContent = "❌ Failed to load from sheet";
         }
@@ -1231,7 +1240,8 @@
         }
     }
 
-    // Make sure to call saveCategoriesToSheet after category changes (already included in the category functions)
+    // Make sure to call saveCategoriesToSheet after category changes
+    // (Already included in saveCategoryMarkup, addNewCategoryPrompt, removeCategory, resetCategoryDefaults)
 
 </script>
 </body>
