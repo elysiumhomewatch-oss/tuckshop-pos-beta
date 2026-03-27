@@ -347,21 +347,25 @@ function showConfirm(message, onYes) {
 }
 
 // Add this right after showConfirm function
+// Corrected showPrompt function - no duplicate 'modal'
 function showPrompt(message, defaultValue, onSubmit) {
     const modal = document.getElementById('custom-modal');
+    
     document.getElementById('modal-title').textContent = "Input Required";
     document.getElementById('modal-body').innerHTML = `
         <p>${message}</p>
-        <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}" placeholder="Enter amount">
+        <input type="number" step="0.01" id="modal-input" class="modal-input" 
+               value="${defaultValue || ''}" placeholder="Enter amount">
     `;
+    
     document.getElementById('modal-buttons').innerHTML = `
         <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
         <button class="btn btn-save" id="prompt-confirm">OK</button>
     `;
 
-    const modal = document.getElementById('custom-modal');   // ← This duplicate line causes the error
     modal.style.display = 'flex';
 
+    // Clean click handler
     document.getElementById('prompt-confirm').onclick = () => {
         const value = parseFloat(document.getElementById('modal-input').value) || 0;
         closeModal();
