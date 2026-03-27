@@ -126,46 +126,19 @@
             padding: 24px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text);
-        }
-        .modal-body {
-            margin-bottom: 24px;
-            line-height: 1.5;
-            white-space: pre-line;
-        }
+        .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+        .modal-body { margin-bottom: 24px; line-height: 1.5; white-space: pre-line; }
         .modal-input {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 16px;
-            margin-bottom: 12px;
+            width: 100%; padding: 14px; border: 1px solid #cbd5e1;
+            border-radius: 10px; font-size: 16px; margin-bottom: 12px;
         }
-        .modal-buttons {
-            display: flex;
-            gap: 12px;
-        }
+        .modal-buttons { display: flex; gap: 12px; }
         .modal-buttons button {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
+            flex: 1; padding: 14px; border: none; border-radius: 10px;
+            font-weight: 600; font-size: 16px; cursor: pointer;
         }
-        .modal-buttons .btn-cancel {
-            background: #e2e8f0;
-            color: #334155;
-        }
-        .modal-buttons .btn-confirm {
-            background: var(--primary);
-            color: white;
-        }
+        .modal-buttons .btn-cancel { background: #e2e8f0; color: #334155; }
+        .modal-buttons .btn-confirm { background: var(--primary); color: white; }
     </style>
 </head>
 <body>
@@ -174,7 +147,7 @@
     <div class="beta-banner">🔬 BETA TESTING VERSION - Please report any issues</div>
     
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
-    <div class="watermark">Free testing version for spaza shops • Version 0.5</div>
+    <div class="watermark">Free testing version for spaza shops • Version 0.6</div>
 
     <nav>
         <button id="nav-sale" class="active" onclick="showTab('sale')">Sale</button>
@@ -244,7 +217,6 @@
     <!-- SETTINGS TAB -->
     <div id="sets-tab" class="tab-content">
         <h2>Settings</h2>
-        
         <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet for Me</button>
         <p style="text-align:center; font-size:14px; color:#64748b; margin:8px 0 20px 0;">
             One-tap setup: Creates a new Google Sheet in your Drive
@@ -277,12 +249,12 @@
                 📖 How to Use Tuckshop POS Beta <span>▼</span>
             </div>
             <div class="accordion-content">
-                1. Tap "Create New Shared Sheet" (recommended)<br>
-                2. Paste the URL and tap "Save My Sheet & Sync"<br>
+                1. Tap "Create New Shared Sheet"<br>
+                2. Paste URL and tap "Save My Sheet & Sync"<br>
                 3. Refresh Inventory<br>
-                4. Scan & sell in Sale tab<br>
-                5. At end of shift, tap "Cash Up / Float Check"<br><br>
-                <em>This is a Beta version. Please report any issues.</em>
+                4. Scan & sell<br>
+                5. Use "Cash Up" at end of shift<br><br>
+                <em>Beta version - report issues please.</em>
             </div>
         </div>
 
@@ -306,7 +278,7 @@
 </div>
 
 <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwdZrtqlaRxyOm6fc6Zhm12PifLKDvUHUXzUUzFnY838r1UkOSVO3Eb2RjgsjgV6eimCQ/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
 
     let inventory = [];
     let cart = [];
@@ -335,7 +307,7 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-    // Modal helpers
+    // ==================== MODAL FUNCTIONS ====================
     function showMessage(message, callback = null) {
         const modal = document.getElementById('custom-modal');
         document.getElementById('modal-title').textContent = "Message";
@@ -358,10 +330,7 @@
         document.getElementById('modal-confirm').textContent = "Yes";
         modal.style.display = 'flex';
 
-        document.getElementById('modal-confirm').onclick = () => {
-            modal.style.display = 'none';
-            onConfirm();
-        };
+        document.getElementById('modal-confirm').onclick = () => { modal.style.display = 'none'; onConfirm(); };
         document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
     }
 
@@ -387,6 +356,7 @@
         document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
     }
 
+    // ==================== CORE FUNCTIONS ====================
     window.onload = () => {
         loadSettings();
         loadMarkups();
@@ -397,6 +367,7 @@
         renderCart();
         renderTransactionLog();
         dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
+        updateDailyDisplay();
         checkDailyLimit();
     };
 
@@ -411,8 +382,16 @@
     }
 
     function incrementDailyCount() {
-        dailyCount++;
+        dailyCount = Math.min(dailyCount + 1, DAILY_LIMIT);
         localStorage.setItem(todayKey, dailyCount);
+        updateDailyDisplay();
+        checkDailyLimit();
+    }
+
+    function decrementDailyCount() {
+        dailyCount = Math.max(0, dailyCount - 1);
+        localStorage.setItem(todayKey, dailyCount);
+        updateDailyDisplay();
         checkDailyLimit();
     }
 
@@ -462,7 +441,7 @@
     }
 
     function createNewSheet() {
-        showConfirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the full URL and paste it in Settings.\n\nContinue?", () => {
+        showConfirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the URL and paste it below.\n\nContinue?", () => {
             document.getElementById('sale-status').textContent = "Opening new Google Sheet...";
             window.open("https://docs.google.com/spreadsheets/create", "_blank");
             document.getElementById('sale-status').textContent = "✅ New sheet opened. Set sharing and paste URL in Settings.";
@@ -473,7 +452,7 @@
         const url = document.getElementById('user-sheet-url').value.trim();
         if (url) {
             localStorage.setItem('user-sheet-url', url);
-            showMessage("✅ Your Google Sheet URL has been saved!", () => fetchInventoryFromSheet());
+            showMessage("✅ Sheet URL saved!", () => fetchInventoryFromSheet());
         } else {
             showMessage("Please enter your Google Sheet URL.");
         }
@@ -517,7 +496,6 @@
 
         const markup = parseFloat(localStorage.getItem('markup-' + category)) || 20;
         const selling = (cost * (1 + markup / 100)).toFixed(2);
-
         previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}%)`;
         previewDiv.style.display = 'block';
     }
@@ -530,38 +508,30 @@
             document.getElementById('stock-name').value = item.name || "";
             document.getElementById('stock-cost').value = item.cost || "";
             document.getElementById('stock-cat').value = item.category || "Other";
-            document.getElementById('stock-status').textContent = "✅ Item found - fields populated";
+            document.getElementById('stock-status').textContent = "✅ Item found";
             updatePricePreview();
         } else {
             document.getElementById('stock-name').value = "";
             document.getElementById('stock-cost').value = "";
             document.getElementById('stock-cat').value = "Other";
-            document.getElementById('stock-status').textContent = "New item - please fill details";
+            document.getElementById('stock-status').textContent = "New item";
             updatePricePreview();
         }
     }
 
     function handleStockSearch(val) {
         const resultsDiv = document.getElementById('stock-search-results');
-        if (val.length < 2) {
-            resultsDiv.style.display = 'none';
-            return;
-        }
+        if (val.length < 2) { resultsDiv.style.display = 'none'; return; }
 
         const lower = val.toLowerCase();
         const normalized = normalizeBarcode(val);
-
         const filtered = inventory.filter(i => 
-            (i.name || '').toLowerCase().includes(lower) || 
-            normalizeBarcode(i.barcode) === normalized
+            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
         );
 
         resultsDiv.innerHTML = filtered.map(i => 
-            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">
-                ${i.name} (${i.barcode})
-            </div>`
+            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
         ).join('');
-
         resultsDiv.style.display = filtered.length ? 'block' : 'none';
     }
 
@@ -574,21 +544,21 @@
             document.getElementById('stock-cost').value = item.cost || "";
             document.getElementById('stock-cat').value = item.category || "Other";
             document.getElementById('stock-search-results').style.display = 'none';
-            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
             updatePricePreview();
         }
     }
 
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', (e) => {
         const resultsDiv = document.getElementById('stock-search-results');
         if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
             resultsDiv.style.display = 'none';
         }
     });
 
+    // ==================== SCANNER ====================
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') 
-            return showMessage("Daily free limit reached. Upgrade for unlimited sales!");
+            return showMessage("Daily free limit reached.");
 
         if (typeof Quagga === 'undefined') return showMessage("Scanner library not loaded.");
 
@@ -602,44 +572,24 @@
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: { ideal: "environment" },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
+                video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
             });
 
             currentMediaStream = stream;
-
             document.getElementById('interactive').style.display = 'block';
             document.getElementById('stop-scan-btn').style.display = 'block';
             isScannerRunning = true;
 
             Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.getElementById('interactive'),
-                    constraints: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                },
+                inputStream: { name: "Live", type: "LiveStream", target: document.getElementById('interactive'),
+                    constraints: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }} },
                 locator: { patchSize: "medium", halfSample: true },
                 numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
                 frequency: 15,
-                decoder: {
-                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
-                    multiple: false
-                },
+                decoder: { readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"], multiple: false },
                 locate: true
             }, (err) => {
-                if (err) {
-                    showMessage("Scanner failed to start: " + err);
-                    stopScanner();
-                    return;
-                }
+                if (err) { showMessage("Scanner failed: " + err); stopScanner(); return; }
                 Quagga.start();
             });
 
@@ -662,31 +612,26 @@
                     stopScanner();
                 }
             });
-
         } catch (e) {
-            showMessage(`Camera error: ${e.name}\nMake sure no other app is using the camera and try again.`);
+            showMessage(`Camera error: ${e.name}`);
             stopScanner();
         }
     }
 
     function stopScanner() {
         if (Quagga && isScannerRunning) Quagga.stop();
-        if (currentMediaStream) {
-            currentMediaStream.getTracks().forEach(track => track.stop());
-            currentMediaStream = null;
-        }
+        if (currentMediaStream) currentMediaStream.getTracks().forEach(track => track.stop());
         document.getElementById('interactive').style.display = 'none';
         document.getElementById('stop-scan-btn').style.display = 'none';
         isScannerRunning = false;
     }
 
+    // ==================== INVENTORY & SYNC ====================
     function loadInventoryFromLocal() {
         const saved = localStorage.getItem('tuckshop_inventory');
         if (saved) {
             inventory = JSON.parse(saved);
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from device`;
-        } else {
-            elements.saleStatus.textContent = "No local data yet.";
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items`;
         }
     }
 
@@ -698,7 +643,7 @@
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first.");
 
-        elements.saleStatus.textContent = "Loading from your Google Sheet...";
+        elements.saleStatus.textContent = "Loading from sheet...";
 
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
@@ -707,11 +652,8 @@
                 body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
             });
 
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const rawData = await res.json();
-
-            inventory = rawData.map(row => ({
+            const items = await res.json();
+            inventory = items.map(row => ({
                 barcode: normalizeBarcode(row.Barcode || row.barcode || ""),
                 name: String(row.Name || row.name || ""),
                 cost: parseFloat(row.Cost || row.cost || 0),
@@ -719,9 +661,8 @@
             })).filter(item => item.barcode);
 
             saveInventoryToLocal();
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from your sheet`;
+            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
         } catch (e) {
-            console.error("Fetch error:", e);
             elements.saleStatus.textContent = "❌ Failed to load from sheet";
         }
     }
@@ -730,49 +671,33 @@
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first!");
 
-        showConfirm("Import products from Master Database?\n\nWarning: Cost prices will be 0.", async () => {
-            const statusEl = document.getElementById('sale-status');
-            statusEl.textContent = "Importing Master Products...";
-
+        showConfirm("Import from Master Database?\nPrices will be 0.", async () => {
             try {
                 const res = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: "importMaster", sheetUrl: sheetUrl })
                 });
-
                 const masterItems = await res.json();
 
-                if (!Array.isArray(masterItems) || masterItems.length === 0) {
-                    return showMessage("Master database returned no items.");
-                }
-
-                let importedCount = 0;
-                const existingBarcodes = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
+                let imported = 0;
+                const existing = new Set(inventory.map(i => normalizeBarcode(i.barcode)));
 
                 for (const item of masterItems) {
-                    const normalizedBarcode = normalizeBarcode(item.barcode);
-                    if (!normalizedBarcode || existingBarcodes.has(normalizedBarcode)) continue;
+                    const norm = normalizeBarcode(item.barcode);
+                    if (!norm || existing.has(norm)) continue;
 
-                    const newItem = {
-                        barcode: normalizedBarcode,
-                        name: String(item.name || ""),
-                        cost: 0,
-                        category: String(item.category || "Other")
-                    };
-
+                    const newItem = { barcode: norm, name: item.name || "", cost: 0, category: item.category || "Other" };
                     await saveSingleItemToSheet(newItem);
                     inventory.push(newItem);
-                    existingBarcodes.add(normalizedBarcode);
-                    importedCount++;
+                    existing.add(norm);
+                    imported++;
                 }
 
                 saveInventoryToLocal();
-                statusEl.textContent = `✅ Imported ${importedCount} new products`;
-                showMessage(`✅ Imported ${importedCount} products!\n\nNote: Cost prices are 0. Please set them in the Stock tab.`);
+                showMessage(`✅ Imported ${imported} new products`);
             } catch (e) {
-                console.error(e);
-                showMessage("Import failed: " + e.message);
+                showMessage("Import failed.");
             }
         });
     }
@@ -786,30 +711,21 @@
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
             });
-        } catch (e) {
-            console.error("Failed to save item:", e);
-        }
+        } catch (e) {}
     }
 
     async function saveStockToCloud() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL in Settings first!");
+        if (!sheetUrl) return showMessage("Please set your Sheet URL first.");
 
-        let barcode = document.getElementById('stock-barcode').value.trim();
         const data = {
-            barcode: normalizeBarcode(barcode),
+            barcode: normalizeBarcode(document.getElementById('stock-barcode').value),
             name: document.getElementById('stock-name').value.trim(),
             cost: parseFloat(document.getElementById('stock-cost').value) || 0,
             category: document.getElementById('stock-cat').value
         };
 
-        if (!data.name || !data.barcode) return showMessage("Barcode and Item Name are required!");
-
-        const saveBtn = document.getElementById('save-stock-btn');
-        const statusEl = document.getElementById('stock-status');
-
-        saveBtn.disabled = true;
-        statusEl.textContent = "Saving / Updating...";
+        if (!data.barcode || !data.name) return showMessage("Barcode and Name are required.");
 
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
@@ -819,41 +735,29 @@
             });
 
             const result = await res.json();
-
             if (result.success) {
-                showMessage("✅ Item saved / updated successfully!");
-                const index = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
-                if (index !== -1) {
-                    inventory[index] = { ...inventory[index], ...data };
-                } else {
-                    inventory.push(data);
-                }
+                showMessage("✅ Item saved/updated!");
+                const idx = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
+                if (idx !== -1) inventory[idx] = {...inventory[idx], ...data};
+                else inventory.push(data);
                 saveInventoryToLocal();
-            } else {
-                showMessage("Save failed: " + (result.error || "Unknown error"));
             }
         } catch (e) {
-            showMessage("Connection error: " + e.message);
-        } finally {
-            saveBtn.disabled = false;
-            statusEl.textContent = "";
+            showMessage("Save failed.");
         }
     }
 
+    // ==================== SALE FUNCTIONS ====================
     function handleSearch(val) {
-        if (val.length < 2) {
-            elements.searchResults.style.display = 'none';
-            return;
-        }
+        if (val.length < 2) { elements.searchResults.style.display = 'none'; return; }
         const lower = val.toLowerCase();
         const filtered = inventory.filter(i => 
-            (i.name || '').toLowerCase().includes(lower) || 
-            normalizeBarcode(i.barcode) === normalizeBarcode(val)
+            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalizeBarcode(val)
         );
 
         elements.searchResults.innerHTML = filtered.length ? 
             filtered.map(i => `<div class="search-row" onclick="addToCart('${String(i.barcode)}')">${i.name} (R${getPrice(i)})</div>`).join('') :
-            `<div style="padding:12px;color:#888;">No matching items found</div>`;
+            `<div style="padding:12px;color:#888;">No matching items</div>`;
         elements.searchResults.style.display = 'block';
     }
 
@@ -864,11 +768,11 @@
     }
 
     function addToCart(barcodeStr) {
-        if (dailyCount >= DAILY_LIMIT) return showMessage("Daily limit reached – upgrade!");
+        if (dailyCount >= DAILY_LIMIT) return showMessage("Daily limit reached.");
         const normalized = normalizeBarcode(barcodeStr);
         const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
         if (!item) return showMessage("Item not found.");
-        
+
         const existing = cart.find(c => normalizeBarcode(c.barcode) === normalized);
         if (existing) existing.qty++;
         else cart.push({ ...item, qty: 1, price: getPrice(item) });
@@ -877,6 +781,13 @@
         elements.searchResults.style.display = 'none';
         renderCart();
         incrementDailyCount();
+    }
+
+    function removeFromCart(idx) {
+        if (idx < 0 || idx >= cart.length) return;
+        cart.splice(idx, 1);
+        renderCart();
+        decrementDailyCount();   // ← This fixes the bug
     }
 
     function renderCart() {
@@ -890,41 +801,37 @@
         elements.grandTotal.textContent = 'R' + total.toFixed(2);
     }
 
-    function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
-
-    function clearCart() { 
-        showConfirm("Clear cart?", () => { cart = []; renderCart(); });
+    function clearCart() {
+        showConfirm("Clear entire cart?", () => {
+            const removedCount = cart.length;
+            cart = [];
+            renderCart();
+            // Decrement for each removed item
+            for (let i = 0; i < removedCount; i++) decrementDailyCount();
+        });
     }
 
     function checkout() {
         if (!cart.length) return;
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
 
-        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
-            if (cash < total) {
-                showMessage("Not enough cash received!");
-                return;
-            }
+        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received:`, total.toFixed(2), (cash) => {
+            if (cash < total) return showMessage("Not enough cash!");
 
             const change = cash - total;
 
-            // Log transaction
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            transactions.unshift({
-                time: timeStr,
-                total: total.toFixed(2),
-                items: cart.length,
-                change: change.toFixed(2)
-            });
+            transactions.unshift({ time: timeStr, total: total.toFixed(2), items: cart.length, change: change.toFixed(2) });
             if (transactions.length > 5) transactions.pop();
             localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
             renderTransactionLog();
 
             addToDailyTotal(total);
 
-            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`, () => {
-                clearCart();
+            showMessage(`✅ Sale Complete!\nTotal: R${total.toFixed(2)}\nCash: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}`, () => {
+                cart = [];
+                renderCart();
             });
         });
     }
@@ -937,7 +844,7 @@
     function renderTransactionLog() {
         const logDiv = elements.transactionLog;
         if (transactions.length === 0) {
-            logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
+            logDiv.innerHTML = "<em>No sales yet today.</em>";
             return;
         }
         logDiv.innerHTML = transactions.map(t => `
@@ -945,39 +852,31 @@
         `).join('');
     }
 
-    // ==================== CASH UP WITH FLOAT ====================
+    // ==================== CASH UP ====================
     function showCashUp() {
         const expectedSales = dailyTotal;
         const expectedCash = startingFloat + expectedSales;
 
-        showPrompt(`Cash Up\n\nExpected cash (Float + Sales): R${expectedCash.toFixed(2)}\n\nEnter actual cash counted in drawer:`, 
-            expectedCash.toFixed(2), 
-            (cashCounted) => {
+        showPrompt(`Cash Up\nExpected cash: R${expectedCash.toFixed(2)}\n\nCash in drawer:`, expectedCash.toFixed(2), (cashCounted) => {
+            showPrompt("Card slips / card payments total:", "0", (cardTotal) => {
+                const actual = cashCounted + cardTotal;
+                const variance = actual - expectedCash;
 
-            showPrompt("Enter total from card slips / card payments:", "0", (cardTotal) => {
+                let msg = `CASH UP SUMMARY\n\n`;
+                msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
+                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
+                msg += `────────────────────\n`;
+                msg += `Expected: R${expectedCash.toFixed(2)}\n`;
+                msg += `Actual:   R${actual.toFixed(2)}\n`;
+                msg += `Variance: R${variance.toFixed(2)}\n\n`;
+                if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
+                else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
+                else msg += `✅ Perfect match!`;
 
-                const actualTotal = cashCounted + cardTotal;
-                const variance = actualTotal - expectedCash;
-
-                let summary = `CASH UP SUMMARY\n\n`;
-                summary += `Starting Float:     R${startingFloat.toFixed(2)}\n`;
-                summary += `Today's Sales:      R${expectedSales.toFixed(2)}\n`;
-                summary += `────────────────────\n`;
-                summary += `Expected Cash:      R${expectedCash.toFixed(2)}\n`;
-                summary += `Cash Counted:       R${cashCounted.toFixed(2)}\n`;
-                summary += `Card Payments:      R${cardTotal.toFixed(2)}\n`;
-                summary += `Actual Total:       R${actualTotal.toFixed(2)}\n`;
-                summary += `Variance:           R${variance.toFixed(2)}\n\n`;
-
-                if (variance > 0) summary += `✅ You are OVER by R${variance.toFixed(2)}`;
-                else if (variance < 0) summary += `⚠️ You are SHORT by R${Math.abs(variance).toFixed(2)}`;
-                else summary += `✅ Perfect match!`;
-
-                showMessage(summary, () => {
-                    showPrompt("Enter starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
+                showMessage(msg, () => {
+                    showPrompt("Starting float for next shift:", cashCounted.toFixed(2), (newFloat) => {
                         startingFloat = newFloat;
                         localStorage.setItem(floatKey, startingFloat);
-                        showMessage(`Starting float for tomorrow set to R${startingFloat.toFixed(2)}`);
                     });
                 });
             });
