@@ -305,7 +305,11 @@ function saveInventoryToLocal() {
     localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
 }
 
-
+// ====================== UTILITY FUNCTIONS ======================
+function normalizeBarcode(barcode) {
+    return String(barcode || "").trim().replace(/^0+/, '');
+}
+    
     function updateDailyDisplay() {
     elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
     elements.dailyItemsEl.textContent = dailyCount;
