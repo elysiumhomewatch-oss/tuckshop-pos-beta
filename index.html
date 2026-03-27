@@ -165,7 +165,12 @@
 <body>
 
 <div class="container">
+    
     <div class="beta-banner">🔬 BETA TESTING VERSION 0.9 - Persistent Categories + Stock Deduction</div>
+<div id="install-banner">
+    <div>📱 Install Tuckshop POS for full-screen experience</div>
+    <button id="install-btn">Add to Home Screen</button>
+</div>
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
     <div class="watermark">Made for Spaza & Tuckshops</div>
 
@@ -1210,7 +1215,58 @@ if (sheetUrl && cart.length) {
         });
     };
 
-   
+ // ====================== PWA INSTALL & FULL-SCREEN ======================
+let deferredPrompt = null;
+const installBanner = document.getElementById('install-banner');
+const installBtn = document.getElementById('install-btn');
+
+// Show install banner if not in standalone mode
+function checkInstallStatus() {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone === true;
+    
+    if (!isStandalone) {
+        installBanner.style.display = 'block';
+    } else {
+        installBanner.style.display = 'none';
+    }
+}
+
+// Handle Install Prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBanner.style.display = 'block';
+});
+
+if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to install prompt: ${outcome}`);
+            deferredPrompt = null;
+            installBanner.style.display = 'none';
+        } else {
+            // Fallback for browsers that don't support beforeinstallprompt
+            alert("To install:\n\n1. Tap the browser menu (⋮)\n2. Choose 'Add to home screen' or 'Install app'");
+        }
+    });
+}
+
+// Listen for changes (e.g. user installs or closes)
+window.addEventListener('appinstalled', () => {
+    installBanner.style.display = 'none';
+    console.log('Tuckshop POS installed successfully!');
+});
+
+// Initial check
+window.addEventListener('load', () => {
+    checkInstallStatus();
+    
+    // Re-check when display mode changes
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkInstallStatus);
+});  
 
 </script>
 </body>
