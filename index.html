@@ -47,7 +47,7 @@
             width: 100%; height: 100%; object-fit: cover; 
         }
 
-        input, select { 
+        input, select, input[type="date"] { 
             width: 100%; padding: 14px; border: 1px solid #cbd5e1; 
             border-radius: 10px; font-size: 16px; margin-bottom: 12px; 
         }
@@ -62,6 +62,7 @@
         .btn-gray { background: var(--gray); color: white; }
         .btn-create { background: #10b981; color: white; }
         .btn-cashup { background: #7c3aed; color: white; }
+        .btn-inspector { background: #f59e0b; color: white; }
 
         .cart-item { 
             display: flex; justify-content: space-between; 
@@ -77,16 +78,7 @@
         .search-row:hover { background: #f8fafc; }
 
         .watermark { color: #94a3b8; font-size: 13px; text-align: center; margin: 16px 0; }
-        .upgrade-msg { background: #fef3c7; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 15px; }
         .status { color: var(--gray); font-size: 14px; margin-top: 8px; }
-
-        .markup-group { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .markup-group label { flex: 0 0 100px; font-weight: 500; }
-
-        .accordion { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 16px 0; overflow: hidden; }
-        .accordion-header { padding: 14px; background: #f1f5f9; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .accordion-content { padding: 14px; display: none; line-height: 1.5; }
-        .accordion-content.show { display: block; }
 
         .price-preview { 
             background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 8px 0; 
@@ -121,14 +113,16 @@
         .modal-content {
             background: white;
             width: 90%;
-            max-width: 420px;
+            max-width: 460px;
             border-radius: 16px;
             padding: 24px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: 85vh;
+            overflow-y: auto;
         }
         .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
-        .modal-body { margin-bottom: 24px; line-height: 1.5; white-space: pre-line; }
-        .modal-input {
+        .modal-body { margin-bottom: 24px; line-height: 1.5; }
+        .modal-input, .modal-select {
             width: 100%; padding: 14px; border: 1px solid #cbd5e1;
             border-radius: 10px; font-size: 16px; margin-bottom: 12px;
         }
@@ -147,7 +141,7 @@
     <div class="beta-banner">🔬 BETA TESTING VERSION - Please report any issues</div>
     
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
-    <div class="watermark">Free testing version for spaza shops • Version 0.6</div>
+    <div class="watermark">Version 0.7 • Stock tab enhanced</div>
 
     <nav>
         <button id="nav-sale" class="active" onclick="showTab('sale')">Sale</button>
@@ -158,7 +152,7 @@
     <div id="interactive" class="viewport"></div>
     <button id="stop-scan-btn" class="btn btn-danger" style="display:none;" onclick="stopScanner()">Close Camera</button>
 
-    <!-- SALE TAB -->
+    <!-- SALE TAB (unchanged from previous working version) -->
     <div id="sale-tab" class="tab-content active">
         <button id="scan-btn" class="btn btn-scan" onclick="startScanner('sale')">📷 Scan Item</button>
         <div style="position:relative;">
@@ -188,48 +182,59 @@
         </div>
     </div>
 
-    <!-- STOCK TAB -->
+    <!-- IMPROVED STOCK TAB -->
     <div id="stock-tab" class="tab-content">
-        <h2>Receive / Edit Goods</h2>
-        <button class="btn btn-scan" onclick="startScanner('stock')">📷 Scan Barcode</button>
+        <h2>Stock Management</h2>
         
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <button class="btn btn-scan" style="flex:1" onclick="startScanner('stock')">📷 Scan Barcode</button>
+            <button class="btn btn-inspector" style="flex:1" onclick="showStockInspector()">🔍 Stock Inspector</button>
+        </div>
+
+        <button class="btn btn-gray" onclick="manageCategories()">Manage Categories (Max 15)</button>
+
         <div style="position:relative;">
             <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
             <div id="stock-search-results"></div>
         </div>
-        
-        <input type="text" id="stock-name" placeholder="Item Name">
+
+        <input type="text" id="stock-name" placeholder="Item Name *">
         <input type="number" step="0.01" id="stock-cost" placeholder="Cost Price (R)" oninput="updatePricePreview()">
+        
         <select id="stock-cat" onchange="updatePricePreview()">
-            <option value="Snacks">Snacks</option>
-            <option value="Drinks">Drinks</option>
-            <option value="Other">Other</option>
+            <!-- Populated dynamically -->
         </select>
 
-        <div id="price-preview" class="price-preview" style="display:none;">
-            Selling Price: <strong>R0.00</strong> (Markup: <span id="preview-markup">20</span>%)
+        <input type="number" step="0.1" id="stock-custom-markup" placeholder="Custom Markup % (optional override)" oninput="updatePricePreview()">
+        
+        <div style="display:flex; gap:8px;">
+            <input type="number" id="stock-qty" placeholder="Current Stock Qty" style="flex:1">
+            <input type="number" id="stock-min-level" placeholder="Min Stock Level" style="flex:1" value="5">
         </div>
 
+        <input type="date" id="stock-expiry" placeholder="Expiry Date (optional)">
+
+        <div id="price-preview" class="price-preview" style="display:none;"></div>
+
         <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
+        <button class="btn btn-gray" onclick="clearStockForm()">Clear Form (New Item)</button>
+
         <div id="stock-status" class="status"></div>
     </div>
 
-    <!-- SETTINGS TAB -->
+    <!-- SETTINGS TAB (kept for now) -->
     <div id="sets-tab" class="tab-content">
         <h2>Settings</h2>
-        <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet for Me</button>
-        <p style="text-align:center; font-size:14px; color:#64748b; margin:8px 0 20px 0;">
-            One-tap setup: Creates a new Google Sheet in your Drive
-        </p>
-
+        <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet</button>
+        
         <label>Your Google Sheet URL:</label>
-        <input type="text" id="user-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." style="margin-bottom:12px;">
+        <input type="text" id="user-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
         
         <button class="btn" style="background:#334155; color:white;" onclick="saveUserSheetURL()">Save My Sheet & Sync</button>
-        <button class="btn btn-gray" style="margin-top:8px;" onclick="fetchInventoryFromSheet()">Refresh Inventory from My Sheet</button>
-        <button class="btn btn-save" style="margin-top:8px;" onclick="importMasterProducts()">Import Master Products</button>
+        <button class="btn btn-gray" onclick="fetchInventoryFromSheet()">Refresh Inventory from Sheet</button>
+        <button class="btn btn-save" onclick="importMasterProducts()">Import Master Products</button>
 
-        <h3 style="margin-top:24px;">Category Markups (%)</h3>
+        <h3 style="margin-top:24px;">Default Category Markups (%)</h3>
         <div class="markup-group">
             <label>Snacks:</label>
             <input type="number" id="markup-Snacks" value="20" min="0">
@@ -242,25 +247,10 @@
             <label>Other:</label>
             <input type="number" id="markup-Other" value="10" min="0">
         </div>
-        <button class="btn" style="background:#334155; color:white;" onclick="saveMarkups()">Save Markups</button>
+        <button class="btn" style="background:#334155; color:white;" onclick="saveMarkups()">Save Default Markups</button>
 
-        <div class="accordion" style="margin-top:24px;">
-            <div class="accordion-header" onclick="toggleAccordion(this)">
-                📖 How to Use Tuckshop POS Beta <span>▼</span>
-            </div>
-            <div class="accordion-content">
-                1. Tap "Create New Shared Sheet"<br>
-                2. Paste URL and tap "Save My Sheet & Sync"<br>
-                3. Refresh Inventory<br>
-                4. Scan & sell<br>
-                5. Use "Cash Up" at end of shift<br><br>
-                <em>Beta version - report issues please.</em>
-            </div>
-        </div>
-
-        <div class="upgrade-msg" style="margin-top:16px;">
-            <strong>Want More Features?</strong><br><br>
-            Upgrade for unlimited sales, recipes, employees, reports & more.
+        <div class="upgrade-msg" style="margin-top:20px;">
+            <strong>More features coming:</strong> Employee management, recipes, reports, etc.
         </div>
     </div>
 </div>
@@ -270,10 +260,7 @@
     <div class="modal-content">
         <div class="modal-title" id="modal-title"></div>
         <div class="modal-body" id="modal-body"></div>
-        <div class="modal-buttons">
-            <button class="btn btn-gray" id="modal-cancel">Cancel</button>
-            <button class="btn btn-save" id="modal-confirm">OK</button>
-        </div>
+        <div class="modal-buttons" id="modal-buttons"></div>
     </div>
 </div>
 
@@ -292,6 +279,8 @@
     let dailyCount = 0;
     let dailyTotal = 0;
     let startingFloat = 0;
+    let categories = ["Snacks", "Drinks", "Other"];
+
     let todayKey = 'tuckshop_free_today_' + new Date().toDateString();
     let dailyTotalKey = 'tuckshop_daily_total_' + new Date().toDateString();
     let floatKey = 'tuckshop_starting_float_' + new Date().toDateString();
@@ -307,31 +296,30 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-    // ==================== MODAL FUNCTIONS ====================
+    // ==================== MODAL SYSTEM ====================
     function showMessage(message, callback = null) {
         const modal = document.getElementById('custom-modal');
         document.getElementById('modal-title').textContent = "Message";
         document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-        document.getElementById('modal-cancel').style.display = 'none';
-        document.getElementById('modal-confirm').textContent = "OK";
+        const btns = document.getElementById('modal-buttons');
+        btns.innerHTML = `<button class="btn btn-save" onclick="closeModal();${callback ? 'setTimeout(() => {' + callback.toString().replace(/function\s*\(\)\s*\{|\}$/g, '') + '}, 10);' : ''}">OK</button>`;
         modal.style.display = 'flex';
+    }
 
-        document.getElementById('modal-confirm').onclick = () => {
-            modal.style.display = 'none';
-            if (callback) callback();
-        };
+    function closeModal() {
+        document.getElementById('custom-modal').style.display = 'none';
     }
 
     function showConfirm(message, onConfirm) {
         const modal = document.getElementById('custom-modal');
         document.getElementById('modal-title').textContent = "Confirm";
         document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-        document.getElementById('modal-cancel').style.display = 'block';
-        document.getElementById('modal-confirm').textContent = "Yes";
+        const btns = document.getElementById('modal-buttons');
+        btns.innerHTML = `
+            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" onclick="closeModal(); setTimeout(() => {${onConfirm.toString().replace(/function\s*\(\)\s*\{|\}$/g, '')}}, 10);">Yes</button>
+        `;
         modal.style.display = 'flex';
-
-        document.getElementById('modal-confirm').onclick = () => { modal.style.display = 'none'; onConfirm(); };
-        document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
     }
 
     function showPrompt(message, defaultValue, onSubmit) {
@@ -339,24 +327,24 @@
         document.getElementById('modal-title').textContent = "Input Required";
         document.getElementById('modal-body').innerHTML = `
             <p>${message}</p>
-            <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}" placeholder="Enter amount">
+            <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}">
         `;
-        document.getElementById('modal-cancel').style.display = 'block';
-        document.getElementById('modal-confirm').textContent = "OK";
+        const btns = document.getElementById('modal-buttons');
+        btns.innerHTML = `
+            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" onclick="handlePromptSubmit()">OK</button>
+        `;
         modal.style.display = 'flex';
-
-        const input = document.getElementById('modal-input');
-        input.focus();
-
-        document.getElementById('modal-confirm').onclick = () => {
-            const value = parseFloat(input.value) || 0;
-            modal.style.display = 'none';
-            onSubmit(value);
-        };
-        document.getElementById('modal-cancel').onclick = () => modal.style.display = 'none';
+        window.currentPromptCallback = onSubmit;
     }
 
-    // ==================== CORE FUNCTIONS ====================
+    window.handlePromptSubmit = function() {
+        const value = parseFloat(document.getElementById('modal-input').value) || 0;
+        closeModal();
+        if (window.currentPromptCallback) window.currentPromptCallback(value);
+    };
+
+    // ==================== BASIC FUNCTIONS ====================
     window.onload = () => {
         loadSettings();
         loadMarkups();
@@ -369,191 +357,62 @@
         dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
         updateDailyDisplay();
         checkDailyLimit();
+        populateCategoryDropdown();
     };
 
-    function checkDailyLimit() {
-        if (dailyCount >= DAILY_LIMIT) {
-            document.getElementById('scan-btn').disabled = true;
-            elements.manualSearch.disabled = true;
-        } else {
-            document.getElementById('scan-btn').disabled = false;
-            elements.manualSearch.disabled = false;
-        }
+    function populateCategoryDropdown() {
+        const select = document.getElementById('stock-cat');
+        select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
-    function incrementDailyCount() {
-        dailyCount = Math.min(dailyCount + 1, DAILY_LIMIT);
-        localStorage.setItem(todayKey, dailyCount);
-        updateDailyDisplay();
-        checkDailyLimit();
+    function manageCategories() {
+        let html = `<h3>Current Categories (${categories.length}/15)</h3><ul>`;
+        categories.forEach((cat, i) => {
+            if (cat !== "Other") {
+                html += `<li>${cat} <button onclick="removeCategory('${cat}')" style="color:red;">Remove</button></li>`;
+            } else {
+                html += `<li>${cat} (protected)</li>`;
+            }
+        });
+        html += `</ul><input type="text" id="new-category" placeholder="New category name" style="width:100%;padding:10px;margin:10px 0;">`;
+        html += `<button onclick="addNewCategory()" class="btn btn-save">Add Category</button>`;
+
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Manage Categories";
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+        modal.style.display = 'flex';
     }
 
-    function decrementDailyCount() {
-        dailyCount = Math.max(0, dailyCount - 1);
-        localStorage.setItem(todayKey, dailyCount);
-        updateDailyDisplay();
-        checkDailyLimit();
+    function addNewCategory() {
+        const name = document.getElementById('new-category').value.trim();
+        if (!name) return;
+        if (categories.length >= 15) return alert("Maximum 15 categories reached.");
+        if (categories.includes(name)) return alert("Category already exists.");
+        
+        categories.push(name);
+        populateCategoryDropdown();
+        closeModal();
+        showMessage(`Category "${name}" added successfully.`);
     }
 
-    function loadDailySales() {
-        dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
-        updateDailyDisplay();
-    }
-
-    function updateDailyDisplay() {
-        elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
-        elements.dailyItemsEl.textContent = dailyCount;
-    }
-
-    function loadStartingFloat() {
-        startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
-    }
-
-    function resetDailySales() {
-        showConfirm("Reset today's sales and float for a new day?", () => {
-            dailyCount = 0;
-            dailyTotal = 0;
-            startingFloat = 0;
-            localStorage.setItem(todayKey, '0');
-            localStorage.setItem(dailyTotalKey, '0');
-            localStorage.setItem(floatKey, '0');
-            updateDailyDisplay();
-            showMessage("Daily sales and float have been reset.");
+    function removeCategory(catName) {
+        if (catName === "Other") return;
+        
+        const count = inventory.filter(i => i.category === catName).length;
+        
+        showConfirm(`Delete category "${catName}"?\n\n${count} items use this category.`, () => {
+            // Simple move to "Other" for now
+            inventory.forEach(item => {
+                if (item.category === catName) item.category = "Other";
+            });
+            categories = categories.filter(c => c !== catName);
+            populateCategoryDropdown();
+            saveInventoryToLocal();
+            closeModal();
+            showMessage(`Category "${catName}" deleted. Items moved to "Other".`);
         });
     }
-
-    function addToDailyTotal(amount) {
-        dailyTotal += amount;
-        localStorage.setItem(dailyTotalKey, dailyTotal);
-        updateDailyDisplay();
-    }
-
-    function showTab(tab) {
-        if (isScannerRunning) stopScanner();
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-        document.getElementById(tab + '-tab').classList.add('active');
-        document.getElementById('nav-' + tab).classList.add('active');
-    }
-
-    function normalizeBarcode(barcode) {
-        return String(barcode || "").trim().replace(/^0+/, '');
-    }
-
-    function createNewSheet() {
-        showConfirm("This will open a new blank Google Sheet.\n\nAfter it opens:\n1. Click Share → Anyone with the link → Editor\n2. Copy the URL and paste it below.\n\nContinue?", () => {
-            document.getElementById('sale-status').textContent = "Opening new Google Sheet...";
-            window.open("https://docs.google.com/spreadsheets/create", "_blank");
-            document.getElementById('sale-status').textContent = "✅ New sheet opened. Set sharing and paste URL in Settings.";
-        });
-    }
-
-    function saveUserSheetURL() {
-        const url = document.getElementById('user-sheet-url').value.trim();
-        if (url) {
-            localStorage.setItem('user-sheet-url', url);
-            showMessage("✅ Sheet URL saved!", () => fetchInventoryFromSheet());
-        } else {
-            showMessage("Please enter your Google Sheet URL.");
-        }
-    }
-
-    function loadSettings() {
-        document.getElementById('user-sheet-url').value = localStorage.getItem('user-sheet-url') || '';
-    }
-
-    function loadMarkups() {
-        document.getElementById('markup-Snacks').value = localStorage.getItem('markup-Snacks') || 20;
-        document.getElementById('markup-Drinks').value = localStorage.getItem('markup-Drinks') || 15;
-        document.getElementById('markup-Other').value = localStorage.getItem('markup-Other') || 10;
-    }
-
-    function saveMarkups() {
-        localStorage.setItem('markup-Snacks', document.getElementById('markup-Snacks').value);
-        localStorage.setItem('markup-Drinks', document.getElementById('markup-Drinks').value);
-        localStorage.setItem('markup-Other', document.getElementById('markup-Other').value);
-        showMessage("Markups saved! Prices updated.");
-        renderCart();
-        updatePricePreview();
-    }
-
-    function toggleAccordion(header) {
-        const content = header.nextElementSibling;
-        content.classList.toggle('show');
-        const arrow = header.querySelector('span');
-        arrow.textContent = content.classList.contains('show') ? '▲' : '▼';
-    }
-
-    function updatePricePreview() {
-        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-        const category = document.getElementById('stock-cat').value;
-        const previewDiv = document.getElementById('price-preview');
-
-        if (cost <= 0) {
-            previewDiv.style.display = 'none';
-            return;
-        }
-
-        const markup = parseFloat(localStorage.getItem('markup-' + category)) || 20;
-        const selling = (cost * (1 + markup / 100)).toFixed(2);
-        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}%)`;
-        previewDiv.style.display = 'block';
-    }
-
-    function autoFillFromBarcode(inputValue) {
-        if (inputValue.length < 3) return;
-        const normalized = normalizeBarcode(inputValue);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (item) {
-            document.getElementById('stock-name').value = item.name || "";
-            document.getElementById('stock-cost').value = item.cost || "";
-            document.getElementById('stock-cat').value = item.category || "Other";
-            document.getElementById('stock-status').textContent = "✅ Item found";
-            updatePricePreview();
-        } else {
-            document.getElementById('stock-name').value = "";
-            document.getElementById('stock-cost').value = "";
-            document.getElementById('stock-cat').value = "Other";
-            document.getElementById('stock-status').textContent = "New item";
-            updatePricePreview();
-        }
-    }
-
-    function handleStockSearch(val) {
-        const resultsDiv = document.getElementById('stock-search-results');
-        if (val.length < 2) { resultsDiv.style.display = 'none'; return; }
-
-        const lower = val.toLowerCase();
-        const normalized = normalizeBarcode(val);
-        const filtered = inventory.filter(i => 
-            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
-        );
-
-        resultsDiv.innerHTML = filtered.map(i => 
-            `<div class="search-row" onclick="selectStockItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
-        ).join('');
-        resultsDiv.style.display = filtered.length ? 'block' : 'none';
-    }
-
-    function selectStockItem(barcode) {
-        const normalized = normalizeBarcode(barcode);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (item) {
-            document.getElementById('stock-barcode').value = item.barcode;
-            document.getElementById('stock-name').value = item.name || "";
-            document.getElementById('stock-cost').value = item.cost || "";
-            document.getElementById('stock-cat').value = item.category || "Other";
-            document.getElementById('stock-search-results').style.display = 'none';
-            updatePricePreview();
-        }
-    }
-
-    document.addEventListener('click', (e) => {
-        const resultsDiv = document.getElementById('stock-search-results');
-        if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
-            resultsDiv.style.display = 'none';
-        }
-    });
 
     // ==================== SCANNER ====================
     async function startScanner(mode) {
