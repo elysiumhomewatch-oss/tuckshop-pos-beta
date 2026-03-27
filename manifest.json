@@ -1,8 +1,9 @@
 {
     "name": "Tuckshop POS Beta",
     "short_name": "Tuckshop POS",
-    "description": "Simple POS for Spaza & Tuckshops - Sales, Stock & Cash Up",
-    "start_url": "index-pos.html",
+    "description": "Simple POS for Spaza & Tuckshops",
+    "start_url": "./index-pos.html",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#f8fafc",
     "theme_color": "#2563eb",
