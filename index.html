@@ -437,6 +437,59 @@ function renderTransactionLog() {
         modal.style.display = 'flex';
     }
 
+
+    // ====================== STOCK INSPECTOR ======================
+function showStockInspector() {
+    let issues = [];
+
+    inventory.forEach(item => {
+        const normBarcode = normalizeBarcode(item.barcode);
+        
+        if (!item.name || item.name.trim() === "") 
+            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
+        
+        if (!item.cost || item.cost <= 0) 
+            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
+        
+        if (!item.category) 
+            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
+        
+        if (item.stockQty === 0) 
+            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
+        
+        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
+            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
+        
+        if (item.expiryDate) {
+            const expiry = new Date(item.expiryDate);
+            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
+            if (daysLeft < 0) 
+                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
+            else if (daysLeft <= 7) 
+                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
+        }
+    });
+
+    let html = `<h3>Stock Inspector</h3>`;
+    if (issues.length === 0) {
+        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
+    } else {
+        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px;">`;
+        issues.forEach(issue => {
+            html += `<li onclick="editItem('${issue.barcode}')" style="cursor:pointer; padding:6px 0; color:var(--warning);">
+                ${issue.type} — ${issue.name}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = "Stock Inspector";
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+    modal.style.display = 'flex';
+}
+
     function saveCategoryMarkup(cat, value) {
         localStorage.setItem('markup-' + cat, parseFloat(value) || 10);
         // Update price preview if currently editing an item in this category
@@ -496,22 +549,26 @@ function renderTransactionLog() {
 
     // ====================== PRICE PREVIEW (updated) ======================
     function updatePricePreview() {
-        const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
-        const category = document.getElementById('stock-cat').value;
-        const previewDiv = document.getElementById('price-preview');
+    const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
+    const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
+    const category = document.getElementById('stock-cat').value || "Other";
+    const previewDiv = document.getElementById('price-preview');
 
-        if (cost <= 0) {
-            previewDiv.style.display = 'none';
-            return;
-        }
-
-        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
-        const selling = (cost * (1 + markup / 100)).toFixed(2);
-
-        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
-        previewDiv.style.display = 'block';
+    if (cost <= 0) {
+        previewDiv.style.display = 'none';
+        return;
     }
+
+    // Use custom markup if set, otherwise use category default
+    let markup = customMarkup > 0 ? customMarkup : 
+                 (parseFloat(localStorage.getItem('markup-' + category)) || 10);
+
+    const selling = (cost * (1 + markup / 100)).toFixed(2);
+
+    previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
+        (Markup: ${markup}% ${customMarkup > 0 ? '(Custom override)' : '(Category default)'})`;
+    previewDiv.style.display = 'block';
+}
     // ====================== SCANNER ======================
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') return showMessage("Daily limit reached.");
