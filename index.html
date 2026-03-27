@@ -863,7 +863,7 @@
             async function checkout() {
         if (!cart.length) return;
 
-        const completeBtn = document.querySelector('#sale-tab .btn-save'); // "Complete Sale" button
+        const completeBtn = document.querySelector('#sale-tab .btn-save'); // Complete Sale button
         if (completeBtn) completeBtn.disabled = true;
 
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
@@ -874,9 +874,10 @@
                 if (completeBtn) completeBtn.disabled = false;
                 return;
             }
+
             const change = cash - total;
 
-            // Deduct stock quantity locally
+            // 1. Deduct stock locally
             cart.forEach(cartItem => {
                 const item = inventory.find(i => normalizeBarcode(i.barcode) === normalizeBarcode(cartItem.barcode));
                 if (item) {
@@ -884,7 +885,7 @@
                 }
             });
 
-            // Log transaction
+            // 2. Log transaction
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             transactions.unshift({
@@ -900,12 +901,29 @@
             addToDailyTotal(total);
             saveInventoryToLocal();
 
-            // Sync to sheet with loading state
-            const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-            const statusEl = elements.saleStatus;
+            // 3. Show success message first (sale feels complete)
+            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, async () => {
+                cart = [];
+                renderCart();
 
-            if (sheetUrl) {
-                statusEl.textContent = "Updating stock in sheet... (please wait)";
+                // 4. ONLY AFTER success message is closed → start sheet sync with spinner
+                const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+                if (!sheetUrl) {
+                    if (completeBtn) completeBtn.disabled = false;
+                    return;
+                }
+
+                // Show spinning sync modal
+                const modal = document.getElementById('custom-modal');
+                document.getElementById('modal-title').textContent = "Syncing to Sheet";
+                document.getElementById('modal-body').innerHTML = `
+                    <p style="text-align:center; padding:20px;">
+                        Updating stock levels in Google Sheet...<br><br>
+                        <span style="font-size:28px;">⟳</span>
+                    </p>
+                `;
+                document.getElementById('modal-buttons').innerHTML = '';
+                modal.style.display = 'flex';
 
                 try {
                     for (const item of inventory) {
@@ -919,19 +937,15 @@
                             })
                         });
                     }
-                    statusEl.textContent = "✅ Stock updated in sheet";
+                    showMessage("✅ Stock levels successfully updated in sheet.", () => {
+                        if (completeBtn) completeBtn.disabled = false;
+                    });
                 } catch (e) {
-                    console.error("Sheet sync failed:", e);
-                    statusEl.textContent = "⚠️ Stock updated locally only (sheet sync failed)";
+                    console.error("Sync failed:", e);
+                    showMessage("⚠️ Sale completed, but stock update to sheet failed.<br>Stock is saved locally.", () => {
+                        if (completeBtn) completeBtn.disabled = false;
+                    });
                 }
-            } else {
-                statusEl.textContent = "✅ Sale complete (local only)";
-            }
-
-            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
-                cart = [];
-                renderCart();
-                if (completeBtn) completeBtn.disabled = false;
             });
         });
     }
