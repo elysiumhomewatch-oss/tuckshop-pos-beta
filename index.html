@@ -290,6 +290,62 @@
 
     // ====================== MODAL SYSTEM ======================
 
+    // ====================== INVENTORY LOAD/SAVE ======================
+function loadInventoryFromLocal() {
+    const saved = localStorage.getItem('tuckshop_inventory');
+    if (saved) {
+        inventory = JSON.parse(saved);
+        console.log(`Loaded ${inventory.length} items from local storage`);
+    } else {
+        console.log("No local inventory found yet");
+    }
+}
+
+function saveInventoryToLocal() {
+    localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
+}
+
+
+    function updateDailyDisplay() {
+    elements.dailyTotalEl.textContent = 'R' + dailyTotal.toFixed(2);
+    elements.dailyItemsEl.textContent = dailyCount;
+}
+
+function checkDailyLimit() {
+    if (dailyCount >= DAILY_LIMIT) {
+        document.getElementById('scan-btn').disabled = true;
+        elements.manualSearch.disabled = true;
+    } else {
+        document.getElementById('scan-btn').disabled = false;
+        elements.manualSearch.disabled = false;
+    }
+}
+
+function loadDailySales() {
+    dailyTotal = parseFloat(localStorage.getItem(dailyTotalKey) || '0');
+    updateDailyDisplay();
+}
+
+function loadStartingFloat() {
+    startingFloat = parseFloat(localStorage.getItem(floatKey) || '0');
+}
+
+function loadTransactions() {
+    const saved = localStorage.getItem('tuckshop_transactions');
+    if (saved) transactions = JSON.parse(saved);
+}
+
+function renderTransactionLog() {
+    const logDiv = elements.transactionLog;
+    if (transactions.length === 0) {
+        logDiv.innerHTML = "<em>No sales recorded yet today.</em>";
+        return;
+    }
+    logDiv.innerHTML = transactions.map(t => `
+        <div>${t.time} — R${t.total} (${t.items} items) • Change: R${t.change}</div>
+    `).join('');
+}
+
     function showTab(tab) {
         if (isScannerRunning) stopScanner();
     
@@ -856,9 +912,9 @@ window.onload = () => {
     updateDailyDisplay();
     checkDailyLimit();
     
-    populateCategoryDropdown();   // Important for new category system
+    populateCategoryDropdown();
     
-    // Initialize default markups if they don't exist
+    // Initialize default markups if missing
     categories.forEach(cat => {
         if (!localStorage.getItem('markup-' + cat)) {
             const defaultVal = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
@@ -866,7 +922,7 @@ window.onload = () => {
         }
     });
 };
-
+    
 // ====================== AUTO-FILL & SEARCH (Updated) ======================
 function autoFillFromBarcode(inputValue) {
     if (inputValue.length < 3) return;
