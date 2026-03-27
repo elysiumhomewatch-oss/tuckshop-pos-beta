@@ -672,6 +672,7 @@ function barcodesMatch(a, b) {
         if (!sheetUrl) {
             showMessage("Please set your Google Sheet URL in Settings first.");
             return;
+            fetchInventoryFromSheet();
         }
 
         const data = {
