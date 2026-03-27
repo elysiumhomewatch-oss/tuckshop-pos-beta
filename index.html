@@ -860,10 +860,10 @@
         });
     }
 
-            async function checkout() {
+                async function checkout() {
         if (!cart.length) return;
 
-        const completeBtn = document.querySelector('#sale-tab .btn-save'); // Complete Sale button
+        const completeBtn = document.querySelector('#sale-tab .btn-save');
         if (completeBtn) completeBtn.disabled = true;
 
         const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
@@ -877,23 +877,21 @@
 
             const change = cash - total;
 
-            // 1. Deduct stock locally
+            // Deduct stock locally for sold items only
+            const soldItems = [];
             cart.forEach(cartItem => {
                 const item = inventory.find(i => normalizeBarcode(i.barcode) === normalizeBarcode(cartItem.barcode));
                 if (item) {
-                    item.stockQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
+                    const newQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
+                    item.stockQty = newQty;
+                    soldItems.push({ ...item, stockQty: newQty });   // Only these items
                 }
             });
 
-            // 2. Log transaction
+            // Log transaction
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            transactions.unshift({
-                time: timeStr,
-                total: total.toFixed(2),
-                items: cart.length,
-                change: change.toFixed(2)
-            });
+            transactions.unshift({ time: timeStr, total: total.toFixed(2), items: cart.length, change: change.toFixed(2) });
             if (transactions.length > 5) transactions.pop();
             localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
             renderTransactionLog();
@@ -901,48 +899,51 @@
             addToDailyTotal(total);
             saveInventoryToLocal();
 
-            // 3. Show success message first (sale feels complete)
-            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, async () => {
+            // Show success first
+            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, async () => {
                 cart = [];
                 renderCart();
 
-                // 4. ONLY AFTER success message is closed → start sheet sync with spinner
                 const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-                if (!sheetUrl) {
+                if (!sheetUrl || soldItems.length === 0) {
                     if (completeBtn) completeBtn.disabled = false;
                     return;
                 }
 
-                // Show spinning sync modal
+                // Show spinning modal
                 const modal = document.getElementById('custom-modal');
-                document.getElementById('modal-title').textContent = "Syncing to Sheet";
+                document.getElementById('modal-title').textContent = "Syncing Stock";
                 document.getElementById('modal-body').innerHTML = `
-                    <p style="text-align:center; padding:20px;">
+                    <p style="text-align:center; padding:30px 20px;">
                         Updating stock levels in Google Sheet...<br><br>
-                        <span style="font-size:28px;">⟳</span>
+                        <div class="spinner"></div>
                     </p>
                 `;
                 document.getElementById('modal-buttons').innerHTML = '';
                 modal.style.display = 'flex';
 
                 try {
-                    for (const item of inventory) {
-                        await fetch(APPS_SCRIPT_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ 
-                                action: "addStock", 
-                                data: item, 
-                                sheetUrl: sheetUrl 
-                            })
-                        });
-                    }
-                    showMessage("✅ Stock levels successfully updated in sheet.", () => {
-                        if (completeBtn) completeBtn.disabled = false;
+                    const res = await fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ 
+                            action: "updateSoldItems", 
+                            soldItems: soldItems, 
+                            sheetUrl: sheetUrl 
+                        })
                     });
+
+                    const result = await res.json();
+                    if (result.success) {
+                        showMessage("✅ Stock levels updated successfully.", () => {
+                            if (completeBtn) completeBtn.disabled = false;
+                        });
+                    } else {
+                        throw new Error(result.error || "Update failed");
+                    }
                 } catch (e) {
-                    console.error("Sync failed:", e);
-                    showMessage("⚠️ Sale completed, but stock update to sheet failed.<br>Stock is saved locally.", () => {
+                    console.error(e);
+                    showMessage("⚠️ Sale completed.<br>Stock updated locally only (sheet sync failed).", () => {
                         if (completeBtn) completeBtn.disabled = false;
                     });
                 }
