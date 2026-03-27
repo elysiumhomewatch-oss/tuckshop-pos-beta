@@ -1178,50 +1178,7 @@ if (sheetUrl && cart.length) {
         });
     };
 
-    // ====================== CATEGORIES PERSISTENCE ======================
-    async function loadCategoriesFromSheet() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return;
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "getCategories", sheetUrl: sheetUrl })
-            });
-            const loaded = await res.json();
-            if (Array.isArray(loaded) && loaded.length > 0) {
-                categories = loaded.map(c => c.name);
-                loaded.forEach(c => {
-                    localStorage.setItem('markup-' + c.name, c.markup);
-                });
-                populateCategoryDropdown();
-            }
-        } catch (e) {
-            console.log("Using local categories");
-        }
-    }
-
-    async function saveCategoriesToSheet() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return;
-        const catData = categories.map(cat => ({
-            name: cat,
-            markup: parseFloat(localStorage.getItem('markup-' + cat)) || 10
-        }));
-        try {
-            await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({
-                    action: "saveCategories",
-                    categories: catData,
-                    sheetUrl: sheetUrl
-                })
-            });
-        } catch (e) {
-            console.error("Failed to save categories");
-        }
-    }
+   
 
 </script>
 </body>
