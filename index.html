@@ -64,10 +64,7 @@
         .btn-inspector { background: var(--warning); color: white; }
         .btn-cashup { background: #7c3aed; color: white; }
 
-        .cart-item { 
-            display: flex; justify-content: space-between; 
-            padding: 12px 0; border-bottom: 1px solid #f1f5f9; 
-        }
+        .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
 
         #search-results, #stock-search-results { 
             position: absolute; background: white; width: 100%; border: 1px solid #e2e8f0; 
@@ -100,24 +97,24 @@
             padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 14px;
         }
 
-        /* Custom Modal */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.65);
             z-index: 1000;
             align-items: center;
             justify-content: center;
         }
         .modal-content {
             background: white;
-            width: 90%;
-            max-width: 460px;
+            width: 92%;
+            max-width: 480px;
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            max-height: 85vh;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            max-height: 88vh;
             overflow-y: auto;
         }
         .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
@@ -138,8 +135,7 @@
 <body>
 
 <div class="container">
-    <div class="beta-banner">🔬 BETA TESTING VERSION 0.7 - Stock Tab Enhanced</div>
-    
+    <div class="beta-banner">🔬 BETA TESTING VERSION 0.8 - Categories Improved</div>
     <h2 style="text-align:center; color:var(--primary);">Tuckshop POS Beta</h2>
     <div class="watermark">Made for Spaza & Tuckshops</div>
 
@@ -182,88 +178,65 @@
         </div>
     </div>
 
-    <!-- ENHANCED STOCK TAB -->
-    <!-- ENHANCED STOCK TAB - Replace your current stock-tab div with this -->
-<div id="stock-tab" class="tab-content">
-    <h2>Stock Management</h2>
-    
-    <div style="display:flex; gap:8px; margin-bottom:16px;">
-        <button class="btn btn-scan" style="flex:1" onclick="startScanner('stock')">📷 Scan Barcode</button>
-        <button class="btn btn-inspector" style="flex:1" onclick="showStockInspector()">🔍 Stock Inspector</button>
-    </div>
-
-    <button class="btn btn-gray" onclick="manageCategories()">Manage Categories (Max 15)</button>
-
-    <div style="position:relative;">
-        <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
-        <div id="stock-search-results"></div>
-    </div>
-
-    <!-- LABELLED FORM FIELDS -->
-    <label for="stock-name"><strong>Item Name *</strong></label>
-    <input type="text" id="stock-name" placeholder="e.g. Coca Cola 500ml">
-
-    <label for="stock-cost"><strong>Cost Price (R)</strong></label>
-    <input type="number" step="0.01" id="stock-cost" placeholder="12.50" oninput="updatePricePreview()">
-
-    <label for="stock-cat"><strong>Category</strong></label>
-    <select id="stock-cat" onchange="updatePricePreview()"></select>
-
-    <label for="stock-custom-markup"><strong>Custom Markup %</strong> <small>(optional - overrides category)</small></label>
-    <input type="number" step="0.1" id="stock-custom-markup" placeholder="25" oninput="updatePricePreview()">
-
-    <div style="display: flex; gap: 12px;">
-        <div style="flex: 1;">
-            <label for="stock-qty"><strong>Current Stock Qty</strong></label>
-            <input type="number" id="stock-qty" placeholder="0">
+    <!-- STOCK TAB - Enhanced with Categories & Markups -->
+    <div id="stock-tab" class="tab-content">
+        <h2>Stock Management</h2>
+        
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <button class="btn btn-scan" style="flex:1" onclick="startScanner('stock')">📷 Scan Barcode</button>
+            <button class="btn btn-inspector" style="flex:1" onclick="showStockInspector()">🔍 Stock Inspector</button>
         </div>
-        <div style="flex: 1;">
-            <label for="stock-min-level"><strong>Min Stock Level</strong></label>
-            <input type="number" id="stock-min-level" placeholder="5" value="5">
+
+        <button class="btn btn-gray" onclick="manageCategoriesAndMarkups()">Manage Categories & Markups</button>
+
+        <div style="position:relative;">
+            <input type="text" id="stock-barcode" placeholder="Barcode" oninput="handleStockSearch(this.value)">
+            <div id="stock-search-results"></div>
         </div>
+
+        <label for="stock-name"><strong>Item Name *</strong></label>
+        <input type="text" id="stock-name" placeholder="e.g. Coca Cola 500ml">
+
+        <label for="stock-cost"><strong>Cost Price (R)</strong></label>
+        <input type="number" step="0.01" id="stock-cost" placeholder="12.50" oninput="updatePricePreview()">
+
+        <label for="stock-cat"><strong>Category</strong></label>
+        <select id="stock-cat" onchange="updatePricePreview()"></select>
+
+        <label for="stock-custom-markup"><strong>Custom Markup %</strong> <small>(optional override)</small></label>
+        <input type="number" step="0.1" id="stock-custom-markup" placeholder="25" oninput="updatePricePreview()">
+
+        <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+                <label for="stock-qty"><strong>Current Stock Qty</strong></label>
+                <input type="number" id="stock-qty" placeholder="0">
+            </div>
+            <div style="flex: 1;">
+                <label for="stock-min-level"><strong>Min Stock Level</strong></label>
+                <input type="number" id="stock-min-level" placeholder="5" value="5">
+            </div>
+        </div>
+
+        <label for="stock-expiry"><strong>Expiry Date</strong> <small>(optional)</small></label>
+        <input type="date" id="stock-expiry">
+
+        <div id="price-preview" class="price-preview" style="display:none;"></div>
+
+        <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
+        <button class="btn btn-gray" onclick="clearStockForm()">Clear Form (New Item)</button>
+
+        <div id="stock-status" class="status"></div>
     </div>
 
-    <label for="stock-expiry"><strong>Expiry Date</strong> <small>(optional)</small></label>
-    <input type="date" id="stock-expiry">
-
-    <div id="price-preview" class="price-preview" style="display:none;"></div>
-
-    <button id="save-stock-btn" class="btn btn-save" onclick="saveStockToCloud()">Save / Update Item</button>
-    <button class="btn btn-gray" onclick="clearStockForm()">Clear Form (New Item)</button>
-
-    <div id="stock-status" class="status"></div>
-</div>
-
-    <!-- SETTINGS TAB -->
+    <!-- SETTINGS TAB (cleaned up) -->
     <div id="sets-tab" class="tab-content">
         <h2>Settings</h2>
-        
         <button class="btn btn-create" onclick="createNewSheet()">🆕 Create New Shared Sheet</button>
-        <p style="text-align:center; font-size:14px; color:#64748b; margin:8px 0 20px 0;">
-            Creates a new Google Sheet in your Drive
-        </p>
-
         <label>Your Google Sheet URL:</label>
         <input type="text" id="user-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
-        
         <button class="btn" style="background:#334155; color:white;" onclick="saveUserSheetURL()">Save My Sheet & Sync</button>
         <button class="btn btn-gray" onclick="fetchInventoryFromSheet()">Refresh Inventory from Sheet</button>
         <button class="btn btn-save" onclick="importMasterProducts()">Import Master Products</button>
-
-        <h3 style="margin-top:24px;">Default Category Markups (%)</h3>
-        <div class="markup-group">
-            <label>Snacks:</label>
-            <input type="number" id="markup-Snacks" value="20" min="0">
-        </div>
-        <div class="markup-group">
-            <label>Drinks:</label>
-            <input type="number" id="markup-Drinks" value="15" min="0">
-        </div>
-        <div class="markup-group">
-            <label>Other:</label>
-            <input type="number" id="markup-Other" value="10" min="0">
-        </div>
-        <button class="btn" style="background:#334155; color:white;" onclick="saveMarkups()">Save Default Markups</button>
 
         <div class="upgrade-msg" style="margin-top:20px;">
             More features coming soon.
@@ -281,13 +254,11 @@
 </div>
 
 <script>
-    // ====================== CONFIG & CONSTANTS ======================
+    // ====================== CONFIG ======================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
-    const DEFAULT_CATEGORIES = ["Snacks", "Drinks", "Other"];
 
-    // ====================== GLOBAL STATE ======================
     let inventory = [];
     let cart = [];
     let transactions = [];
@@ -300,7 +271,7 @@
     let dailyCount = 0;
     let dailyTotal = 0;
     let startingFloat = 0;
-    let categories = [...DEFAULT_CATEGORIES];
+    let categories = ["Snacks", "Drinks", "Other"];
 
     let todayKey = 'tuckshop_free_today_' + new Date().toDateString();
     let dailyTotalKey = 'tuckshop_daily_total_' + new Date().toDateString();
@@ -317,83 +288,134 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-// ====================== MODAL SYSTEM (Fixed & Clean) ======================
-function closeModal() {
-    document.getElementById('custom-modal').style.display = 'none';
-}
-
-function showMessage(message, callback = null) {
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Message";
-    document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-    
-    document.getElementById('modal-buttons').innerHTML = `
-        <button class="btn btn-save" id="modal-ok-btn">OK</button>
-    `;
-
-    modal.style.display = 'flex';
-
-    document.getElementById('modal-ok-btn').onclick = () => {
-        closeModal();
-        if (callback) callback();
-    };
-}
-
-function showConfirm(message, onYes) {
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Confirm";
-    document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-    
-    document.getElementById('modal-buttons').innerHTML = `
-        <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-save" id="modal-yes-btn">Yes</button>
-    `;
-
-    modal.style.display = 'flex';
-
-    document.getElementById('modal-yes-btn').onclick = () => {
-        closeModal();
-        onYes();
-    };
-}
-
-function showPrompt(message, defaultValue, onSubmit) {
-    const modal = document.getElementById('custom-modal');
-    document.getElementById('modal-title').textContent = "Input Required";
-    document.getElementById('modal-body').innerHTML = `
-        <p>${message}</p>
-        <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}" placeholder="Enter amount">
-    `;
-    
-    document.getElementById('modal-buttons').innerHTML = `
-        <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-save" id="modal-prompt-ok">OK</button>
-    `;
-
-    modal.style.display = 'flex';
-
-    document.getElementById('modal-prompt-ok').onclick = () => {
-        const value = parseFloat(document.getElementById('modal-input').value) || 0;
-        closeModal();
-        onSubmit(value);
-    };
-}
-
+    // ====================== MODAL SYSTEM ======================
     function closeModal() {
         document.getElementById('custom-modal').style.display = 'none';
     }
 
-    // ====================== CORE UTILITIES ======================
-    function normalizeBarcode(barcode) {
-        return String(barcode || "").trim().replace(/^0+/, '');
+    function showMessage(message, callback = null) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Message";
+        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+        document.getElementById('modal-buttons').innerHTML = `
+            <button class="btn btn-save" onclick="closeModal(); ${callback ? 'setTimeout(() => {' + callback.toString().replace(/function\s*\(\)\s*\{|\}$/g, '') + '}, 10);' : ''}">OK</button>
+        `;
+        modal.style.display = 'flex';
     }
 
-    function showTab(tab) {
-        if (isScannerRunning) stopScanner();
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-        document.getElementById(tab + '-tab').classList.add('active');
-        document.getElementById('nav-' + tab).classList.add('active');
+    function showConfirm(message, onYes) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Confirm";
+        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+        document.getElementById('modal-buttons').innerHTML = `
+            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" id="confirm-yes">Yes</button>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('confirm-yes').onclick = () => {
+            closeModal();
+            onYes();
+        };
+    }
+
+    function showPrompt(message, defaultValue, onSubmit) {
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Input Required";
+        document.getElementById('modal-body').innerHTML = `
+            <p>${message}</p>
+            <input type="number" step="0.01" id="modal-input" class="modal-input" value="${defaultValue || ''}">
+        `;
+        document.getElementById('modal-buttons').innerHTML = `
+            <button class="btn btn-gray" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-save" id="prompt-ok">OK</button>
+        `;
+        modal.style.display = 'flex';
+
+        document.getElementById('prompt-ok').onclick = () => {
+            const value = parseFloat(document.getElementById('modal-input').value) || 0;
+            closeModal();
+            onSubmit(value);
+        };
+    }
+
+    // ====================== CATEGORIES & MARKUPS ======================
+    function manageCategoriesAndMarkups() {
+        let html = `<h3>Categories & Default Markups (${categories.length}/${MAX_CATEGORIES})</h3>`;
+        html += `<div style="max-height:300px; overflow-y:auto;">`;
+
+        categories.forEach(cat => {
+            const currentMarkup = localStorage.getItem('markup-' + cat) || (cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10);
+            html += `
+                <div style="display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #eee;">
+                    <span style="flex:1; font-weight:500;">${cat}</span>
+                    <input type="number" id="markup-${cat}" value="${currentMarkup}" min="0" style="width:80px; margin-right:8px;" onchange="saveCategoryMarkup('${cat}', this.value)">
+                    <span style="font-size:13px; color:#666;">%</span>
+                    ${cat !== "Other" ? `<button onclick="removeCategory('${cat}')" style="margin-left:12px; color:red; font-size:12px;">Remove</button>` : '<small style="margin-left:12px; color:#888;">(protected)</small>'}
+                </div>`;
+        });
+
+        html += `</div>`;
+        html += `<button onclick="addNewCategoryPrompt()" class="btn btn-save" style="margin-top:12px;">+ Add New Category</button>`;
+        html += `<button onclick="resetCategoryDefaults()" class="btn btn-gray" style="margin-top:8px;">Reset to Defaults</button>`;
+
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Manage Categories & Markups";
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+        modal.style.display = 'flex';
+    }
+
+    function saveCategoryMarkup(cat, value) {
+        localStorage.setItem('markup-' + cat, parseFloat(value) || 10);
+        // Update price preview if currently editing an item in this category
+        if (document.getElementById('stock-tab').classList.contains('active')) {
+            updatePricePreview();
+        }
+    }
+
+    function addNewCategoryPrompt() {
+        if (categories.length >= MAX_CATEGORIES) {
+            alert("Maximum 15 categories reached.");
+            return;
+        }
+        const name = prompt("Enter new category name:");
+        if (!name || categories.includes(name)) return;
+
+        categories.push(name);
+        localStorage.setItem('markup-' + name, 10); // default 10%
+        closeModal();
+        manageCategoriesAndMarkups(); // refresh modal
+        populateCategoryDropdown();
+    }
+
+    function removeCategory(catName) {
+        if (catName === "Other") return;
+        const affected = inventory.filter(i => i.category === catName).length;
+
+        showConfirm(`Delete category "${catName}"?\n${affected} items will be moved to "Other".`, () => {
+            inventory.forEach(item => {
+                if (item.category === catName) item.category = "Other";
+            });
+            categories = categories.filter(c => c !== catName);
+            localStorage.removeItem('markup-' + catName);
+            closeModal();
+            manageCategoriesAndMarkups();
+            populateCategoryDropdown();
+            saveInventoryToLocal();
+            showMessage(`Category "${catName}" removed. Items moved to "Other".`);
+        });
+    }
+
+    function resetCategoryDefaults() {
+        if (confirm("Reset all category markups to defaults?")) {
+            localStorage.setItem('markup-Snacks', 20);
+            localStorage.setItem('markup-Drinks', 15);
+            localStorage.setItem('markup-Other', 10);
+            closeModal();
+            manageCategoriesAndMarkups();
+            showMessage("Markups reset to defaults.");
+        }
     }
 
     function populateCategoryDropdown() {
@@ -401,233 +423,24 @@ function showPrompt(message, defaultValue, onSubmit) {
         select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
-    // ====================== CATEGORIES MANAGEMENT ======================
-    function manageCategories() {
-        let html = `<h3>Current Categories (${categories.length}/${MAX_CATEGORIES})</h3><ul style="padding-left:20px;">`;
-        categories.forEach(cat => {
-            if (cat === "Other") {
-                html += `<li>${cat} <small>(protected)</small></li>`;
-            } else {
-                html += `<li>${cat} <button onclick="removeCategory('${cat}')" style="color:red;font-size:12px;">Remove</button></li>`;
-            }
-        });
-        html += '</ul>';
-        html += `<input type="text" id="new-cat-name" placeholder="New category name" style="width:100%;padding:12px;margin:12px 0;">`;
-        html += `<button onclick="addNewCategory()" class="btn btn-save">Add Category</button>`;
-
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Manage Categories";
-        document.getElementById('modal-body').innerHTML = html;
-        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-        modal.style.display = 'flex';
-    }
-
-    function addNewCategory() {
-        const name = document.getElementById('new-cat-name').value.trim();
-        if (!name) return;
-        if (categories.length >= MAX_CATEGORIES) return alert("Maximum 15 categories allowed.");
-        if (categories.includes(name)) return alert("Category already exists.");
-
-        categories.push(name);
-        populateCategoryDropdown();
-        closeModal();
-        showMessage(`Category "${name}" added.`);
-    }
-
-    function removeCategory(catName) {
-        if (catName === "Other") return;
-        const affected = inventory.filter(i => i.category === catName).length;
-        showConfirm(`Delete "${catName}"?\n${affected} items will move to "Other".`, () => {
-            inventory.forEach(item => {
-                if (item.category === catName) item.category = "Other";
-            });
-            categories = categories.filter(c => c !== catName);
-            populateCategoryDropdown();
-            saveInventoryToLocal();
-            closeModal();
-            showMessage(`Category "${catName}" removed. Items moved to "Other".`);
-        });
-    }
-
-    // ====================== STOCK INSPECTOR ======================
-    function showStockInspector() {
-        let issues = [];
-
-        inventory.forEach(item => {
-            const normBarcode = normalizeBarcode(item.barcode);
-            if (!item.name || item.name.trim() === "") issues.push({barcode: normBarcode, type: "Missing Name"});
-            if (!item.cost || item.cost <= 0) issues.push({barcode: normBarcode, type: "Cost = 0"});
-            if (!item.category) issues.push({barcode: normBarcode, type: "No Category"});
-            if (item.stockQty === 0) issues.push({barcode: normBarcode, type: "Zero Stock"});
-            if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
-                issues.push({barcode: normBarcode, type: "Low Stock"});
-            if (item.expiryDate) {
-                const expiry = new Date(item.expiryDate);
-                const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
-                if (daysLeft < 0) issues.push({barcode: normBarcode, type: "Expired"});
-                else if (daysLeft <= 7) issues.push({barcode: normBarcode, type: "Expiring Soon"});
-            }
-        });
-
-        let html = `<h3>Stock Inspector (${issues.length} issues)</h3>`;
-        if (issues.length === 0) {
-            html += `<p style="color:var(--success);">✅ All good! No issues found.</p>`;
-        } else {
-            html += `<ul>`;
-            issues.forEach(issue => {
-                const item = inventory.find(i => normalizeBarcode(i.barcode) === issue.barcode);
-                html += `<li onclick="editItem('${issue.barcode}')" style="cursor:pointer;color:var(--warning);padding:8px 0;">
-                    ${issue.type} — ${item ? item.name : issue.barcode}
-                </li>`;
-            });
-            html += `</ul>`;
-        }
-
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Stock Inspector";
-        document.getElementById('modal-body').innerHTML = html;
-        document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
-        modal.style.display = 'flex';
-    }
-
-    function editItem(barcode) {
-        closeModal();
-        showTab('stock');
-        const normalized = normalizeBarcode(barcode);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (!item) return;
-
-        document.getElementById('stock-barcode').value = item.barcode;
-        document.getElementById('stock-name').value = item.name || "";
-        document.getElementById('stock-cost').value = item.cost || "";
-        document.getElementById('stock-cat').value = item.category || "Other";
-        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-        document.getElementById('stock-qty').value = item.stockQty || 0;
-        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-        document.getElementById('stock-expiry').value = item.expiryDate || "";
-        updatePricePreview();
-        document.getElementById('stock-status').textContent = "Item loaded for editing";
-    }
-
-    // ====================== PRICE PREVIEW ======================
+    // ====================== PRICE PREVIEW (updated) ======================
     function updatePricePreview() {
         const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-        const custom = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
-        const cat = document.getElementById('stock-cat').value;
-        const preview = document.getElementById('price-preview');
+        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
+        const category = document.getElementById('stock-cat').value;
+        const previewDiv = document.getElementById('price-preview');
 
         if (cost <= 0) {
-            preview.style.display = 'none';
+            previewDiv.style.display = 'none';
             return;
         }
 
-        const markup = custom > 0 ? custom : (parseFloat(localStorage.getItem('markup-' + cat)) || 20);
+        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
         const selling = (cost * (1 + markup / 100)).toFixed(2);
 
-        preview.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}% ${custom > 0 ? '(Custom)' : '(Category)'})`;
-        preview.style.display = 'block';
+        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
+        previewDiv.style.display = 'block';
     }
-
-    // ====================== STOCK FORM ======================
-    function clearStockForm() {
-        document.getElementById('stock-barcode').value = '';
-        document.getElementById('stock-name').value = '';
-        document.getElementById('stock-cost').value = '';
-        document.getElementById('stock-cat').value = 'Other';
-        document.getElementById('stock-custom-markup').value = '';
-        document.getElementById('stock-qty').value = '';
-        document.getElementById('stock-min-level').value = '5';
-        document.getElementById('stock-expiry').value = '';
-        document.getElementById('price-preview').style.display = 'none';
-        document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
-    }
-
-    // ====================== INVENTORY SYNC ======================
-    function loadInventoryFromLocal() {
-        const saved = localStorage.getItem('tuckshop_inventory');
-        if (saved) {
-            inventory = JSON.parse(saved);
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from device`;
-        }
-    }
-
-    function saveInventoryToLocal() {
-        localStorage.setItem('tuckshop_inventory', JSON.stringify(inventory));
-    }
-
-    async function fetchInventoryFromSheet() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return showMessage("Please enter your Google Sheet URL first.");
-
-        elements.saleStatus.textContent = "Loading from sheet...";
-
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "getInventory", sheetUrl: sheetUrl })
-            });
-
-            const data = await res.json();
-            inventory = data.map(row => ({
-                barcode: normalizeBarcode(row.Barcode || row.barcode),
-                name: String(row.Name || row.name || ""),
-                cost: parseFloat(row.Cost || row.cost || 0),
-                category: String(row.Category || row.category || "Other"),
-                customMarkup: parseFloat(row.CustomMarkup || row.customMarkup || 0),
-                stockQty: parseInt(row.StockQty || row.stockQty || 0),
-                minStockLevel: parseInt(row.MinStockLevel || row.minStockLevel || 5),
-                expiryDate: row.ExpiryDate || row.expiryDate || ""
-            })).filter(item => item.barcode);
-
-            saveInventoryToLocal();
-            elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
-            populateCategoryDropdown();
-        } catch (e) {
-            elements.saleStatus.textContent = "❌ Failed to load from sheet";
-        }
-    }
-
-    async function saveStockToCloud() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) return showMessage("Please set your Sheet URL in Settings.");
-
-        const data = {
-            barcode: normalizeBarcode(document.getElementById('stock-barcode').value),
-            name: document.getElementById('stock-name').value.trim(),
-            cost: parseFloat(document.getElementById('stock-cost').value) || 0,
-            category: document.getElementById('stock-cat').value,
-            customMarkup: parseFloat(document.getElementById('stock-custom-markup').value) || 0,
-            stockQty: parseInt(document.getElementById('stock-qty').value) || 0,
-            minStockLevel: parseInt(document.getElementById('stock-min-level').value) || 5,
-            expiryDate: document.getElementById('stock-expiry').value || ""
-        };
-
-        if (!data.barcode || !data.name) return showMessage("Barcode and Name are required.");
-
-        try {
-            const res = await fetch(APPS_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: "addStock", data: data, sheetUrl: sheetUrl })
-            });
-
-            const result = await res.json();
-            if (result.success) {
-                showMessage("✅ Item saved/updated!");
-                const idx = inventory.findIndex(i => normalizeBarcode(i.barcode) === data.barcode);
-                if (idx !== -1) inventory[idx] = { ...inventory[idx], ...data };
-                else inventory.push(data);
-                saveInventoryToLocal();
-                clearStockForm();
-            } else {
-                showMessage("Save failed.");
-            }
-        } catch (e) {
-            showMessage("Connection error.");
-        }
-    }
-
     // ====================== SCANNER ======================
     async function startScanner(mode) {
         if (dailyCount >= DAILY_LIMIT && mode === 'sale') return showMessage("Daily limit reached.");
@@ -1018,66 +831,83 @@ function showPrompt(message, defaultValue, onSubmit) {
     }
 
     // ====================== WINDOW ONLOAD ======================
-    window.onload = () => {
-        loadSettings();
-        loadMarkups();
-        loadInventoryFromLocal();
-        loadDailySales();
-        loadStartingFloat();
-        loadTransactions();
-        renderCart();
-        renderTransactionLog();
-        dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
-        updateDailyDisplay();
-        checkDailyLimit();
-        populateCategoryDropdown();
-    };
-
-    // Auto-fill when scanning in stock tab
-    function autoFillFromBarcode(inputValue) {
-        if (inputValue.length < 3) return;
-        const normalized = normalizeBarcode(inputValue);
-        const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
-        if (item) {
-            document.getElementById('stock-name').value = item.name || "";
-            document.getElementById('stock-cost').value = item.cost || "";
-            document.getElementById('stock-cat').value = item.category || "Other";
-            document.getElementById('stock-custom-markup').value = item.customMarkup || "";
-            document.getElementById('stock-qty').value = item.stockQty || 0;
-            document.getElementById('stock-min-level').value = item.minStockLevel || 5;
-            document.getElementById('stock-expiry').value = item.expiryDate || "";
-            updatePricePreview();
-            document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
-        } else {
-            clearStockForm();
-            document.getElementById('stock-barcode').value = inputValue;
-            document.getElementById('stock-status').textContent = "New item - fill details";
-        }
-    }
-
-    function handleStockSearch(val) {
-        const resultsDiv = document.getElementById('stock-search-results');
-        if (val.length < 2) { resultsDiv.style.display = 'none'; return; }
-
-        const lower = val.toLowerCase();
-        const normalized = normalizeBarcode(val);
-        const filtered = inventory.filter(i => 
-            (i.name || '').toLowerCase().includes(lower) || normalizeBarcode(i.barcode) === normalized
-        );
-
-        resultsDiv.innerHTML = filtered.map(i => 
-            `<div class="search-row" onclick="editItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
-        ).join('');
-        resultsDiv.style.display = filtered.length ? 'block' : 'none';
-    }
-
-    // Prevent closing search results when clicking inside
-    document.addEventListener('click', (e) => {
-        const resultsDiv = document.getElementById('stock-search-results');
-        if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
-            resultsDiv.style.display = 'none';
+window.onload = () => {
+    loadSettings();
+    loadMarkups();
+    loadInventoryFromLocal();
+    loadDailySales();
+    loadStartingFloat();
+    loadTransactions();
+    renderCart();
+    renderTransactionLog();
+    
+    dailyCount = parseInt(localStorage.getItem(todayKey) || '0');
+    updateDailyDisplay();
+    checkDailyLimit();
+    
+    populateCategoryDropdown();   // Important for the new category system
+    
+    // Optional: Load any saved custom markups for categories
+    categories.forEach(cat => {
+        if (!localStorage.getItem('markup-' + cat)) {
+            const defaultMarkup = cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10;
+            localStorage.setItem('markup-' + cat, defaultMarkup);
         }
     });
+};
+
+// ====================== AUTO-FILL & SEARCH (Updated) ======================
+function autoFillFromBarcode(inputValue) {
+    if (inputValue.length < 3) return;
+    const normalized = normalizeBarcode(inputValue);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (item) {
+        document.getElementById('stock-name').value = item.name || "";
+        document.getElementById('stock-cost').value = item.cost || "";
+        document.getElementById('stock-cat').value = item.category || "Other";
+        document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+        document.getElementById('stock-qty').value = item.stockQty || 0;
+        document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+        document.getElementById('stock-expiry').value = item.expiryDate || "";
+        
+        updatePricePreview();
+        document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+    } else {
+        clearStockForm();
+        document.getElementById('stock-barcode').value = inputValue;
+        document.getElementById('stock-status').textContent = "New item - fill details";
+    }
+}
+
+function handleStockSearch(val) {
+    const resultsDiv = document.getElementById('stock-search-results');
+    if (val.length < 2) { 
+        resultsDiv.style.display = 'none'; 
+        return; 
+    }
+
+    const lower = val.toLowerCase();
+    const normalized = normalizeBarcode(val);
+    const filtered = inventory.filter(i => 
+        (i.name || '').toLowerCase().includes(lower) || 
+        normalizeBarcode(i.barcode) === normalized
+    );
+
+    resultsDiv.innerHTML = filtered.map(i => 
+        `<div class="search-row" onclick="editItem('${String(i.barcode)}')">${i.name} (${i.barcode})</div>`
+    ).join('');
+
+    resultsDiv.style.display = filtered.length ? 'block' : 'none';
+}
+
+// Prevent closing search results when clicking inside
+document.addEventListener('click', (e) => {
+    const resultsDiv = document.getElementById('stock-search-results');
+    if (!e.target.closest('#stock-barcode') && !e.target.closest('#stock-search-results')) {
+        resultsDiv.style.display = 'none';
+    }
+});
 </script>
 </body>
 </html>
