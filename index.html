@@ -258,11 +258,10 @@
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
 
-    // ====================== UTILITY (MUST BE FIRST) ======================
-    // Make normalizeBarcode globally available immediately
-    window.normalizeBarcode = function(barcode) {
+    // ====================== UTILITY - MUST BE FIRST ======================
+    function normalizeBarcode(barcode) {
         return String(barcode || "").trim().replace(/^0+/, '');
-    };
+    }
 
     // ====================== GLOBAL VARIABLES ======================
     let inventory = [];
