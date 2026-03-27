@@ -1030,6 +1030,98 @@ function handleStockSearch(val) {
     resultsDiv.style.display = filtered.length ? 'block' : 'none';
 }
 
+
+// ====================== STOCK FORM HELPERS ======================
+function clearStockForm() {
+    document.getElementById('stock-barcode').value = '';
+    document.getElementById('stock-name').value = '';
+    document.getElementById('stock-cost').value = '';
+    document.getElementById('stock-cat').value = 'Other';
+    document.getElementById('stock-custom-markup').value = '';
+    document.getElementById('stock-qty').value = '';
+    document.getElementById('stock-min-level').value = '5';
+    document.getElementById('stock-expiry').value = '';
+    document.getElementById('price-preview').style.display = 'none';
+    document.getElementById('stock-status').textContent = 'Form cleared - ready for new item';
+}
+
+function editItem(barcode) {
+    const normalized = normalizeBarcode(barcode);
+    const item = inventory.find(i => normalizeBarcode(i.barcode) === normalized);
+    
+    if (!item) {
+        showMessage("Item not found.");
+        return;
+    }
+
+    showTab('stock');
+    
+    document.getElementById('stock-barcode').value = item.barcode;
+    document.getElementById('stock-name').value = item.name || "";
+    document.getElementById('stock-cost').value = item.cost || "";
+    document.getElementById('stock-cat').value = item.category || "Other";
+    document.getElementById('stock-custom-markup').value = item.customMarkup || "";
+    document.getElementById('stock-qty').value = item.stockQty || 0;
+    document.getElementById('stock-min-level').value = item.minStockLevel || 5;
+    document.getElementById('stock-expiry').value = item.expiryDate || "";
+
+    updatePricePreview();
+    document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
+}
+
+function showStockInspector() {
+    let issues = [];
+
+    inventory.forEach(item => {
+        const normBarcode = normalizeBarcode(item.barcode);
+        
+        if (!item.name || item.name.trim() === "") 
+            issues.push({barcode: normBarcode, type: "Missing Name", name: item.name || "(no name)"});
+        
+        if (!item.cost || item.cost <= 0) 
+            issues.push({barcode: normBarcode, type: "Cost = 0", name: item.name || "(no name)"});
+        
+        if (!item.category) 
+            issues.push({barcode: normBarcode, type: "No Category", name: item.name || "(no name)"});
+        
+        if (item.stockQty === 0) 
+            issues.push({barcode: normBarcode, type: "Zero Stock", name: item.name || "(no name)"});
+        
+        if (item.stockQty > 0 && item.stockQty <= (item.minStockLevel || 5)) 
+            issues.push({barcode: normBarcode, type: "Low Stock", name: item.name || "(no name)"});
+        
+        if (item.expiryDate) {
+            const expiry = new Date(item.expiryDate);
+            const daysLeft = Math.ceil((expiry - new Date()) / (86400000));
+            if (daysLeft < 0) 
+                issues.push({barcode: normBarcode, type: "Expired", name: item.name || "(no name)"});
+            else if (daysLeft <= 7) 
+                issues.push({barcode: normBarcode, type: "Expiring Soon", name: item.name || "(no name)"});
+        }
+    });
+
+    let html = `<h3>Stock Inspector</h3>`;
+    if (issues.length === 0) {
+        html += `<p style="color:var(--success); font-weight:500;">✅ No issues found. Your stock looks good!</p>`;
+    } else {
+        html += `<p><strong>${issues.length} issues found</strong></p><ul style="padding-left:20px; list-style:none;">`;
+        issues.forEach(issue => {
+            html += `<li onclick="editItem('${issue.barcode}'); closeModal();" 
+                     style="cursor:pointer; padding:8px 0; color:var(--warning); border-bottom:1px solid #eee;">
+                ${issue.type} — ${issue.name}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = "Stock Inspector";
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-buttons').innerHTML = `<button class="btn btn-gray" onclick="closeModal()">Close</button>`;
+    modal.style.display = 'flex';
+}
+
+    
 // New helper to properly select and hide results
 function selectStockItem(barcode) {
     const normalized = normalizeBarcode(barcode);
