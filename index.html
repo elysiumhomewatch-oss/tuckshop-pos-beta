@@ -1225,64 +1225,92 @@ let deferredPrompt = null;
 const installBanner = document.getElementById('install-banner');
 const installBtn = document.getElementById('install-btn');
 
-// Check if already running in standalone / full-screen mode
+// Enhanced check for standalone / installed mode
 function checkDisplayMode() {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone === true;
-    
-    if (isStandalone) {
-        if (installBanner) installBanner.style.display = 'none';
-    } else {
-        if (installBanner) installBanner.style.display = 'block';
+    const isStandalone = 
+        window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true ||
+        document.referrer.includes('android-app') ||   // Some Android cases
+        window.location.href.includes('?standalone');  // Fallback
+
+    console.log('Display mode check - Standalone:', isStandalone);
+
+    if (isStandalone && installBanner) {
+        installBanner.style.display = 'none';
+        console.log('✅ Running in standalone mode - hiding install banner');
+    } else if (installBanner) {
+        installBanner.style.display = 'block';
     }
 }
 
-// Capture the install prompt
+// Capture browser install prompt
 window.addEventListener('beforeinstallprompt', (e) => {
-    console.log('✅ beforeinstallprompt event fired - showing custom banner');
-    e.preventDefault();           // Prevent default browser banner
+    console.log('✅ beforeinstallprompt fired - ready for custom install');
+    e.preventDefault();
     deferredPrompt = e;
-    if (installBanner) installBanner.style.display = 'block';
+    
+    // Show banner only if not already in standalone
+    if (installBanner) {
+        installBanner.style.display = 'block';
+    }
 });
 
 // Handle Install Button Click
 if (installBtn) {
     installBtn.addEventListener('click', async () => {
         if (!deferredPrompt) {
-            // Fallback instructions for browsers that don't support prompt (e.g. iOS Safari)
-            alert("To install Tuckshop POS:\n\n" +
-                  "• On Android/Chrome: Tap the menu (⋮) → 'Install app'\n" +
-                  "• On iPhone/Safari: Tap Share → 'Add to Home Screen'");
+            // Fallback message for devices where install is restricted
+            showMessage("Install may not be available on this device.<br><br>" +
+                        "Try these steps:<br>" +
+                        "• On Chrome: Tap menu (⋮) → 'Install app'<br>" +
+                        "• On laptop: Use Chrome menu → 'Install Tuckshop POS...'", 
+                        () => {});
             return;
         }
 
         installBtn.disabled = true;
         installBtn.textContent = "Installing...";
 
-        const result = await deferredPrompt.prompt();
-        console.log('User install choice:', result.outcome);
+        try {
+            const result = await deferredPrompt.prompt();
+            console.log('Install prompt outcome:', result.outcome);
+
+            if (result.outcome === 'accepted') {
+                console.log('🎉 User accepted installation');
+            } else {
+                console.log('User dismissed install prompt');
+            }
+        } catch (err) {
+            console.error('Install prompt error:', err);
+        }
 
         deferredPrompt = null;
-        if (installBanner) installBanner.style.display = 'none';
-        
         installBtn.disabled = false;
         installBtn.textContent = "Add to Home Screen";
+
+        // Hide banner after attempt
+        if (installBanner) installBanner.style.display = 'none';
     });
 }
 
-// App installed successfully
+// Listen for successful installation
 window.addEventListener('appinstalled', () => {
-    console.log('🎉 Tuckshop POS installed successfully!');
-    if (installBanner) installBanner.style.display = 'none';
+    console.log('🎉 Tuckshop POS was successfully installed!');
+    if (installBanner) {
+        installBanner.style.display = 'none';
+    }
     deferredPrompt = null;
 });
 
-// Initial check when page loads
+// Final check on load and when display mode changes
 window.addEventListener('load', () => {
     checkDisplayMode();
     
-    // Re-check if user changes display mode (e.g. installs)
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkDisplayMode);
+    // Re-check whenever display mode changes (very important for laptops)
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        console.log('Display mode changed to:', e.matches ? 'standalone' : 'browser');
+        checkDisplayMode();
+    });
 });
 </script>
 </body>
