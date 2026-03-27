@@ -260,7 +260,7 @@
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
 
-    // ====================== UTILITY - MUST BE FIRST ======================
+    // ====================== UTILITY ======================
     function normalizeBarcode(barcode) {
         return String(barcode || "").trim().replace(/^0+/, '');
     }
@@ -295,10 +295,7 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
-   
-    // ====================== UTILITY ======================
-    
-
+    // ====================== TAB & DAILY ======================
     function showTab(tab) {
         if (isScannerRunning) stopScanner();
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -383,9 +380,7 @@
     // ====================== INVENTORY & DAILY ======================
     function loadInventoryFromLocal() {
         const saved = localStorage.getItem('tuckshop_inventory');
-        if (saved) {
-            inventory = JSON.parse(saved);
-        }
+        if (saved) inventory = JSON.parse(saved);
     }
 
     function saveInventoryToLocal() {
@@ -450,24 +445,20 @@
         });
     }
 
-    // ====================== CATEGORIES PERSISTENCE ======================
+    // ====================== CATEGORIES ======================
     async function loadCategoriesFromSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return;
-
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ action: "getCategories", sheetUrl: sheetUrl })
             });
-
             const loaded = await res.json();
             if (Array.isArray(loaded) && loaded.length > 0) {
                 categories = loaded.map(c => c.name);
-                loaded.forEach(c => {
-                    localStorage.setItem('markup-' + c.name, c.markup);
-                });
+                loaded.forEach(c => localStorage.setItem('markup-' + c.name, c.markup));
                 populateCategoryDropdown();
             }
         } catch (e) {
@@ -478,32 +469,24 @@
     async function saveCategoriesToSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return;
-
         const catData = categories.map(cat => ({
             name: cat,
             markup: parseFloat(localStorage.getItem('markup-' + cat)) || 10
         }));
-
         try {
             await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ 
-                    action: "saveCategories", 
-                    categories: catData, 
-                    sheetUrl: sheetUrl 
-                })
+                body: JSON.stringify({ action: "saveCategories", categories: catData, sheetUrl: sheetUrl })
             });
         } catch (e) {
             console.error("Failed to save categories");
         }
     }
 
-    // ====================== CATEGORIES UI ======================
     function manageCategoriesAndMarkups() {
         let html = `<h3>Categories & Default Markups (${categories.length}/${MAX_CATEGORIES})</h3>`;
         html += `<div style="max-height:300px; overflow-y:auto;">`;
-
         categories.forEach(cat => {
             const currentMarkup = localStorage.getItem('markup-' + cat) || (cat === "Snacks" ? 20 : cat === "Drinks" ? 15 : 10);
             html += `
@@ -515,7 +498,6 @@
                     ${cat !== "Other" ? `<button onclick="removeCategory('${cat}')" style="margin-left:12px; color:red; font-size:12px;">Remove</button>` : '<small style="margin-left:12px; color:#888;">(protected)</small>'}
                 </div>`;
         });
-
         html += `</div>`;
         html += `<button onclick="addNewCategoryPrompt()" class="btn btn-save" style="margin-top:12px;">+ Add New Category</button>`;
         html += `<button onclick="resetCategoryDefaults()" class="btn btn-gray" style="margin-top:8px;">Reset to Defaults</button>`;
@@ -540,7 +522,6 @@
         }
         const name = prompt("Enter new category name:");
         if (!name || categories.includes(name)) return;
-
         categories.push(name);
         localStorage.setItem('markup-' + name, 10);
         saveCategoriesToSheet();
@@ -584,27 +565,22 @@
         select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
     }
 
-    // ====================== PRICE PREVIEW ======================
+    // ====================== PRICE & STOCK FORM ======================
     function updatePricePreview() {
         const cost = parseFloat(document.getElementById('stock-cost').value) || 0;
-        const customMarkup = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
-        const category = document.getElementById('stock-cat').value || "Other";
-        const previewDiv = document.getElementById('price-preview');
-
         if (cost <= 0) {
-            previewDiv.style.display = 'none';
+            document.getElementById('price-preview').style.display = 'none';
             return;
         }
-
-        const markup = customMarkup > 0 ? customMarkup : (parseFloat(localStorage.getItem('markup-' + category)) || 10);
+        const custom = parseFloat(document.getElementById('stock-custom-markup').value) || 0;
+        const cat = document.getElementById('stock-cat').value || "Other";
+        const markup = custom > 0 ? custom : (parseFloat(localStorage.getItem('markup-' + cat)) || 10);
         const selling = (cost * (1 + markup / 100)).toFixed(2);
-
-        previewDiv.innerHTML = `Selling Price: <strong>R${selling}</strong> 
-            (Markup: ${markup}% ${customMarkup > 0 ? '(Custom)' : '(Category)'})`;
-        previewDiv.style.display = 'block';
+        const preview = document.getElementById('price-preview');
+        preview.innerHTML = `Selling Price: <strong>R${selling}</strong> (Markup: ${markup}% ${custom > 0 ? '(Custom)' : '(Category)'})`;
+        preview.style.display = 'block';
     }
 
-    // ====================== STOCK FORM ======================
     function clearStockForm() {
         document.getElementById('stock-barcode').value = '';
         document.getElementById('stock-name').value = '';
@@ -625,9 +601,7 @@
             showMessage("Item not found.");
             return;
         }
-
         showTab('stock');
-        
         document.getElementById('stock-barcode').value = item.barcode;
         document.getElementById('stock-name').value = item.name || "";
         document.getElementById('stock-cost').value = item.cost || "";
@@ -642,7 +616,6 @@
         } else {
             document.getElementById('stock-expiry').value = '';
         }
-
         updatePricePreview();
         document.getElementById('stock-status').textContent = "✅ Item loaded for editing";
     }
@@ -739,74 +712,6 @@
         }
     }
 
-    // ====================== SCANNER ======================
-    async function startScanner(mode) {
-        if (dailyCount >= DAILY_LIMIT && mode === 'sale') return showMessage("Daily limit reached.");
-        if (typeof Quagga === 'undefined') return showMessage("Scanner not loaded.");
-        if (currentMediaStream) {
-            currentMediaStream.getTracks().forEach(t => t.stop());
-            currentMediaStream = null;
-        }
-        currentScanMode = mode;
-        lastDetectionTime = 0;
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
-            });
-            currentMediaStream = stream;
-            document.getElementById('interactive').style.display = 'block';
-            document.getElementById('stop-scan-btn').style.display = 'block';
-            isScannerRunning = true;
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.getElementById('interactive'),
-                    constraints: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }}
-                },
-                locator: { patchSize: "medium", halfSample: true },
-                numOfWorkers: navigator.hardwareConcurrency ? Math.min(4, navigator.hardwareConcurrency) : 2,
-                frequency: 15,
-                decoder: {
-                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader", "i2of5_reader"],
-                    multiple: false
-                },
-                locate: true
-            }, (err) => {
-                if (err) { showMessage("Scanner init failed"); stopScanner(); return; }
-                Quagga.start();
-            });
-            Quagga.onDetected((data) => {
-                const now = Date.now();
-                if (now - lastDetectionTime < DETECTION_COOLDOWN_MS) return;
-                lastDetectionTime = now;
-                const code = data.codeResult.code;
-                if (navigator.vibrate) navigator.vibrate(80);
-                if (currentScanMode === 'sale') {
-                    addToCart(code);
-                    elements.saleStatus.textContent = `Added: ${code}`;
-                    setTimeout(stopScanner, 400);
-                    incrementDailyCount();
-                } else {
-                    document.getElementById('stock-barcode').value = code;
-                    autoFillFromBarcode(code);
-                    stopScanner();
-                }
-            });
-        } catch (e) {
-            showMessage(`Camera error: ${e.name}`);
-            stopScanner();
-        }
-    }
-
-    function stopScanner() {
-        if (Quagga && isScannerRunning) Quagga.stop();
-        if (currentMediaStream) currentMediaStream.getTracks().forEach(t => t.stop());
-        document.getElementById('interactive').style.display = 'none';
-        document.getElementById('stop-scan-btn').style.display = 'none';
-        isScannerRunning = false;
-    }
-
     // ====================== SALE FUNCTIONS ======================
     function handleSearch(val) {
         if (val.length < 2) { elements.searchResults.style.display = 'none'; return; }
@@ -867,7 +772,93 @@
         });
     }
 
-    
+    async function checkout() {
+        if (!cart.length) return;
+
+        const completeBtn = document.querySelector('#sale-tab .btn-save');
+        if (completeBtn) completeBtn.disabled = true;
+
+        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
+
+        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
+            if (cash < total) {
+                showMessage("Not enough cash received!");
+                if (completeBtn) completeBtn.disabled = false;
+                return;
+            }
+
+            const change = cash - total;
+
+            // Deduct stock locally only
+            cart.forEach(cartItem => {
+                const cartBarcodeClean = String(cartItem.barcode || "").trim().replace(/^0+/, '');
+                const item = inventory.find(i => 
+                    String(i.barcode || "").trim().replace(/^0+/, '') === cartBarcodeClean
+                );
+                if (item) {
+                    item.stockQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
+                }
+            });
+
+            // Log transaction
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            transactions.unshift({
+                time: timeStr,
+                total: total.toFixed(2),
+                items: cart.length,
+                change: change.toFixed(2)
+            });
+            if (transactions.length > 5) transactions.pop();
+            localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
+            renderTransactionLog();
+
+            addToDailyTotal(total);
+            saveInventoryToLocal();
+
+            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
+                cart = [];
+                renderCart();
+                if (completeBtn) completeBtn.disabled = false;
+            });
+        });
+    }
+
+    // ====================== MANUAL SYNC BUTTON ======================
+    async function syncStockToSheet() {
+        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
+        if (!sheetUrl) {
+            showMessage("Please set your Google Sheet URL in Settings first.");
+            return;
+        }
+
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-title').textContent = "Syncing Stock";
+        document.getElementById('modal-body').innerHTML = `
+            <p style="text-align:center; padding:30px 20px;">
+                Updating stock levels in Google Sheet...<br><br>
+                <div class="spinner"></div>
+            </p>
+        `;
+        document.getElementById('modal-buttons').innerHTML = '';
+        modal.style.display = 'flex';
+
+        try {
+            for (const item of inventory) {
+                await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: "addStock", data: item, sheetUrl: sheetUrl })
+                });
+            }
+            showMessage("✅ Stock successfully synced to sheet.", () => {
+                fetchInventoryFromSheet(); // Optional refresh
+            });
+        } catch (e) {
+            console.error(e);
+            showMessage("⚠️ Sync failed. Stock is saved locally.");
+        }
+    }
 
     // ====================== CASH UP ======================
     function showCashUp() {
@@ -879,10 +870,10 @@
                 const variance = actual - expectedCash;
                 let msg = `CASH UP SUMMARY\n\n`;
                 msg += `Starting Float: R${startingFloat.toFixed(2)}\n`;
-                msg += `Today's Sales:  R${expectedSales.toFixed(2)}\n`;
-                msg += `Expected Cash:  R${expectedCash.toFixed(2)}\n`;
-                msg += `Actual:         R${actual.toFixed(2)}\n`;
-                msg += `Variance:       R${variance.toFixed(2)}\n\n`;
+                msg += `Today's Sales: R${expectedSales.toFixed(2)}\n`;
+                msg += `Expected Cash: R${expectedCash.toFixed(2)}\n`;
+                msg += `Actual: R${actual.toFixed(2)}\n`;
+                msg += `Variance: R${variance.toFixed(2)}\n\n`;
                 if (variance > 0) msg += `✅ OVER by R${variance.toFixed(2)}`;
                 else if (variance < 0) msg += `⚠️ SHORT by R${Math.abs(variance).toFixed(2)}`;
                 else msg += `✅ Perfect match!`;
@@ -946,50 +937,9 @@
             saveInventoryToLocal();
             elements.saleStatus.textContent = `✅ Loaded ${inventory.length} items from sheet`;
             populateCategoryDropdown();
-            loadCategoriesFromSheet();   // Load categories too
+            loadCategoriesFromSheet();
         } catch (e) {
             elements.saleStatus.textContent = "❌ Failed to load from sheet";
-        }
-    }
-
-        async function syncStockToSheet() {
-        const sheetUrl = document.getElementById('user-sheet-url').value.trim();
-        if (!sheetUrl) {
-            showMessage("Please set your Google Sheet URL in Settings first.");
-            return;
-        }
-
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Syncing Stock";
-        document.getElementById('modal-body').innerHTML = `
-            <p style="text-align:center; padding:30px 20px;">
-                Updating stock levels in Google Sheet...<br><br>
-                <div class="spinner"></div>
-            </p>
-        `;
-        document.getElementById('modal-buttons').innerHTML = '';
-        modal.style.display = 'flex';
-
-        try {
-            // Use the same "addStock" action as manual edit, but for all items
-            for (const item of inventory) {
-                await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ 
-                        action: "addStock", 
-                        data: item, 
-                        sheetUrl: sheetUrl 
-                    })
-                });
-            }
-            showMessage("✅ Stock successfully synced to sheet.", () => {
-                // Optional: refresh local inventory
-                fetchInventoryFromSheet();
-            });
-        } catch (e) {
-            console.error(e);
-            showMessage("⚠️ Sync failed. Stock is saved locally.");
         }
     }
 
@@ -1174,58 +1124,6 @@
         document.getElementById('stock-search-results').style.display = 'none';
     }
 
-         async function checkout() {
-        if (!cart.length) return;
-
-        const completeBtn = document.querySelector('#sale-tab .btn-save');
-        if (completeBtn) completeBtn.disabled = true;
-
-        const total = cart.reduce((s, i) => s + (Number(i.price) * i.qty), 0);
-
-        showPrompt(`Total: R${total.toFixed(2)}\n\nEnter cash received (R):`, total.toFixed(2), (cash) => {
-            if (cash < total) {
-                showMessage("Not enough cash received!");
-                if (completeBtn) completeBtn.disabled = false;
-                return;
-            }
-
-            const change = cash - total;
-
-            // Deduct stock locally only (no sheet sync here)
-            cart.forEach(cartItem => {
-                const item = inventory.find(i => 
-                    String(i.barcode || "").trim().replace(/^0+/, '') === 
-                    String(cartItem.barcode || "").trim().replace(/^0+/, '')
-                );
-                if (item) {
-                    item.stockQty = Math.max(0, (item.stockQty || 0) - cartItem.qty);
-                }
-            });
-
-            // Log transaction
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            transactions.unshift({
-                time: timeStr,
-                total: total.toFixed(2),
-                items: cart.length,
-                change: change.toFixed(2)
-            });
-            if (transactions.length > 5) transactions.pop();
-            localStorage.setItem('tuckshop_transactions', JSON.stringify(transactions));
-            renderTransactionLog();
-
-            addToDailyTotal(total);
-            saveInventoryToLocal();
-
-            showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
-                cart = [];
-                renderCart();
-                if (completeBtn) completeBtn.disabled = false;
-            });
-        });
-    }
-
     // ====================== WINDOW ONLOAD ======================
     window.onload = () => {
         loadSettings();
@@ -1255,14 +1153,12 @@
     async function loadCategoriesFromSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return;
-
         try {
             const res = await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ action: "getCategories", sheetUrl: sheetUrl })
             });
-
             const loaded = await res.json();
             if (Array.isArray(loaded) && loaded.length > 0) {
                 categories = loaded.map(c => c.name);
@@ -1279,29 +1175,24 @@
     async function saveCategoriesToSheet() {
         const sheetUrl = document.getElementById('user-sheet-url').value.trim();
         if (!sheetUrl) return;
-
         const catData = categories.map(cat => ({
             name: cat,
             markup: parseFloat(localStorage.getItem('markup-' + cat)) || 10
         }));
-
         try {
             await fetch(APPS_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ 
-                    action: "saveCategories", 
-                    categories: catData, 
-                    sheetUrl: sheetUrl 
+                body: JSON.stringify({
+                    action: "saveCategories",
+                    categories: catData,
+                    sheetUrl: sheetUrl
                 })
             });
         } catch (e) {
             console.error("Failed to save categories");
         }
     }
-
-    // Make sure to call saveCategoriesToSheet after category changes
-    // (Already included in saveCategoryMarkup, addNewCategoryPrompt, removeCategory, resetCategoryDefaults)
 
 </script>
 </body>
