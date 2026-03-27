@@ -325,14 +325,22 @@ function checkDailyLimit() {
     }
 
     function showMessage(message, callback = null) {
-        const modal = document.getElementById('custom-modal');
-        document.getElementById('modal-title').textContent = "Message";
-        document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
-        document.getElementById('modal-buttons').innerHTML = `
-            <button class="btn btn-save" onclick="closeModal(); ${callback ? 'setTimeout(() => {' + callback.toString().replace(/function\s*\(\)\s*\{|\}$/g, '') + '}, 10);' : ''}">OK</button>
-        `;
-        modal.style.display = 'flex';
-    }
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = "Message";
+    document.getElementById('modal-body').innerHTML = `<p>${message}</p>`;
+    
+    document.getElementById('modal-buttons').innerHTML = `
+        <button class="btn btn-save" id="message-ok-btn">OK</button>
+    `;
+
+    modal.style.display = 'flex';
+
+    // Use proper event listener instead of inline string
+    document.getElementById('message-ok-btn').onclick = () => {
+        closeModal();
+        if (callback) callback();
+    };
+}
 
     function showConfirm(message, onYes) {
         const modal = document.getElementById('custom-modal');
@@ -898,7 +906,8 @@ function showStockInspector() {
 
         addToDailyTotal(total);
 
-        showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you!`, () => {
+        // Fixed sale complete message
+        showMessage(`✅ Sale Complete!\n\nTotal: R${total.toFixed(2)}\nCash Received: R${cash.toFixed(2)}\nChange: R${change.toFixed(2)}\n\nThank you! Come again!`, () => {
             cart = [];
             renderCart();
         });
