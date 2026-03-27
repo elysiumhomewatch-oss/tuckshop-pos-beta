@@ -359,7 +359,7 @@ function showPrompt(message, defaultValue, onSubmit) {
         <button class="btn btn-save" id="prompt-confirm">OK</button>
     `;
 
-    const modal = document.getElementById('custom-modal');  // make sure it's visible
+    const modal = document.getElementById('custom-modal');   // ← This duplicate line causes the error
     modal.style.display = 'flex';
 
     document.getElementById('prompt-confirm').onclick = () => {
