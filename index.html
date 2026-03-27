@@ -253,17 +253,17 @@
 </div>
 
 <script>
-        // ====================== CONFIG ======================
+    // ====================== CONFIG ======================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAuI8EAL_0y-Lhp5XIEDcnojbwP9E3kBKZ-yXsK6c4t-COZFg3-caR_Iudab76hg/exec";
     const DAILY_LIMIT = 100;
     const MAX_CATEGORIES = 15;
 
-    // ====================== UTILITY ======================
-    // Moved to the very top so all functions can see it
+    // ====================== UTILITY (MUST BE FIRST) ======================
     function normalizeBarcode(barcode) {
         return String(barcode || "").trim().replace(/^0+/, '');
     }
 
+    // ====================== GLOBAL VARIABLES ======================
     let inventory = [];
     let cart = [];
     let transactions = [];
@@ -293,6 +293,7 @@
         transactionLog: document.getElementById('transaction-log')
     };
 
+   
     // ====================== UTILITY ======================
     
 
