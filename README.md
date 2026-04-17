@@ -1,38 +1,113 @@
-# Tuckshop POS Beta
+# Offline-First Tuckshop POS System (Beta)
 
-**Free Beta Version** for spaza and tuckshop owners in South Africa.
+A lightweight, mobile-friendly Point of Sale system designed for informal retail environments with unreliable internet connectivity.
 
-A simple, mobile-friendly Point of Sale system that works offline after initial setup.
+Built specifically for spaza and tuckshop owners in South Africa.
 
-### Features
-- Barcode scanning with phone camera
-- Quick item search
-- Automatic selling price with markup
-- Cash received + exact change calculation
-- Stock management (add/edit items)
-- Daily sales counter
-- Last 5 transactions log
-- Price preview in Stock tab
-- Local storage (works even with poor internet)
+---
 
-### How to Use (for Shop Owners)
+## 🚀 Key Features
 
-1. Open this link on your phone: `https://yourusername.github.io/tuckshop-pos-beta/`
-2. Go to **Settings** tab
-3. Tap **"Create New Shared Sheet for Me"** (or paste your own Google Sheet URL)
-4. Set the sheet sharing to **"Anyone with the link" → Editor**
-5. Paste the sheet URL back into the app and tap "Save My Sheet & Sync"
-6. Start scanning and selling!
+- 📷 Barcode scanning using mobile camera  
+- 🔎 Fast item search and pricing  
+- 💰 Automatic markup-based pricing  
+- 💵 Cash handling with change calculation  
+- 📦 Stock management (add/edit items)  
+- 📊 Daily sales tracking  
+- 🧾 Recent transactions log  
+- 📡 Offline-first operation with local persistence  
+- ☁️ Automatic sync to cloud (Google Sheets backend)  
 
-### Feedback Request
+---
 
-This is a **Beta version**. Please test it for a few days and tell me:
-- What works well?
-- What is confusing or difficult?
-- Any features you want added?
+## 🧠 Technical Highlights
 
-You can reply via WhatsApp or send screenshots of any problems.
+This project focuses on solving real-world constraints in low-connectivity environments:
 
-Thank you for helping test!
+- **Offline-first architecture**  
+  - Transactions continue without internet  
+  - Data stored locally using browser storage  
 
-Made with ❤️ for South African spaza shops.
+- **Deferred synchronization**  
+  - Sales and stock updates sync when connectivity returns  
+  - Prevents data loss in unstable networks  
+
+- **Lightweight backend using Google Apps Script**  
+  - Acts as an API layer  
+  - Persists data to Google Sheets  
+
+- **Stock consistency tracking**  
+  - Updates inventory based on sales  
+  - Maintains a simple but effective data model  
+
+---
+
+## 🏗️ Architecture Overview
+
+```
+[ Web App (Frontend - Netlify/GitHub Pages) ]
+                ↓
+     [ Local Storage (Offline Mode) ]
+                ↓
+     [ Sync Layer (When Online) ]
+                ↓
+ [ Google Apps Script API ]
+                ↓
+     [ Google Sheets Database ]
+```
+
+---
+
+## 🎯 Real-World Use Case
+
+Designed for small retail shops where:
+- Internet access is intermittent or unreliable  
+- Low-cost devices (phones) are used for sales  
+- Simple, reliable tools are preferred over complex systems  
+
+---
+
+## 📱 How to Use (for Shop Owners)
+
+1. Open on your phone:  
+   https://yourusername.github.io/tuckshop-pos-beta/
+
+2. Go to **Settings**
+
+3. Tap **"Create New Shared Sheet for Me"**  
+   *(or paste your own Google Sheet URL)*
+
+4. Set sharing to:  
+   **"Anyone with the link" → Editor**
+
+5. Paste the sheet URL into the app and sync
+
+6. Start selling!
+
+---
+
+## ⚠️ Beta Status
+
+This is an early version under active development.
+
+### Planned Improvements
+- Sync status indicator  
+- Enhanced reporting (daily/weekly summaries)  
+- Improved stock analytics  
+- Better error handling during sync  
+
+---
+
+## 💬 Feedback
+
+Looking for real-world feedback from shop owners:
+
+- What works well?  
+- What is confusing?  
+- What features are needed?  
+
+---
+
+## 👨‍💻 About the Developer
+
+Self-taught developer with a background in mechanical engineering, focused on building practical tools that solve real operational problems.
